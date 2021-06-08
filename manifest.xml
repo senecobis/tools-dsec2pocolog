@@ -1,0 +1,15 @@
+<package>
+  <description brief="Tool convertion from DSEC to pocolog format">
+  Tooling for reading DSEC dataset (compressed HDF5 events and images) and creating a pocolog log file for Rock
+  </description>
+  <author>Javier Hidalgo-Carrio/havyhidalgo@gmail.com</author>
+  <license></license>
+  <url>http://</url>
+  <logo>http://</logo>
+  <depend package="base/cmake" />
+  <depend package="base/orogen/types" />
+  <depend package="external/hdf5_blosc" />
+  <rosdep name="boost" />
+  <rosdep name="hdf5" />
+  <rosdep name="yaml-cpp" />
+</package>
