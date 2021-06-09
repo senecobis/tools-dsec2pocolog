@@ -11,6 +11,7 @@ import_types_from "dsec2pocologTypes.hpp"
 # library's pkg-config name) and then the header can be used. Following Rock
 # conventions, a common use-case would be:
 using_library "blosc" # BLOSC
+using_library "yaml-cpp" # yaml
 using_library "frame_helper" # Image Frames
 
 # using_library "dsec2pocolog"

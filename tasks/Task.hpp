@@ -11,6 +11,22 @@
 
 namespace dsec2pocolog{
 
+    struct Event
+    {
+        /** Variable **/
+        std::vector<double> t;
+        std::vector<double> x;
+        std::vector<double> y;
+        std::vector<double> p;
+        std::vector<double> offset;
+    };
+
+    struct IMU
+    {
+        std::vector<base::Vector6d> values;
+        std::vector<double> t;
+    };
+
     /*! \class Task
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
@@ -33,8 +49,17 @@ namespace dsec2pocolog{
     {
 	friend class TaskBase;
     protected:
+
+        /** Mean gravity value at Earth surface [m/s^2] **/
+        static constexpr float GRAVITY = 9.81;
+
         /** Comfiguration **/
         dsec2pocolog::Config config;
+
+        /** Variable **/
+        ::base::Time starting_time;
+        dsec2pocolog::Event events;
+        dsec2pocolog::IMU imu;
 
         /** Output port variables **/
         ::base::samples::EventArray event_msg;
@@ -109,7 +134,7 @@ namespace dsec2pocolog{
          */
         void cleanupHook();
 
-        void readH5Datasets(std::string fname, std::string dataset, std::vector<double> &data);
+        void readH5Dataset(std::string fname, std::string dataset, std::vector<double> &data);
     };
 }
 
