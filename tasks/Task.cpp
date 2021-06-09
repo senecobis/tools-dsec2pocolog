@@ -102,7 +102,7 @@ bool Task::startHook()
 
     while (infile >> ts)
     {
-        this->depthmap_ts.push_back(ts);
+        this->disp_ts.push_back(ts);
     }
     infile.close();
 
@@ -207,14 +207,35 @@ bool Task::startHook()
     /** Name for the all the images **/
     fs::path path_images = fs::path(config.root_folder)/ fs::path(config.images_folder)/fs::path("*.png");
     std::cout<<path_images.string()<<std::endl;
-    glob::glob glob(path_images.string());
-    while (glob)
+    glob::glob glob_img(path_images.string());
+    while (glob_img)
     {
-        std::cout << glob.current_match() << std::endl;
-        this->img_fname.push_back(glob.current_match());
-        glob.next();
+        this->img_fname.push_back(glob_img.current_match());
+        glob_img.next();
     }
+    std::sort(this->img_fname.begin(), this->img_fname.end());
 
+    /** Name for the all the disparity images **/
+    fs::path path_disp_images = fs::path(config.root_folder)/ fs::path(config.disparity_images_folder)/fs::path("*.png");
+    std::cout<<path_disp_images.string()<<std::endl;
+    glob::glob glob_disp_i(path_disp_images.string());
+    while (glob_disp_i)
+    {
+        this->disp_img_fname.push_back(glob_disp_i.current_match());
+        glob_disp_i.next();
+    }
+    std::sort(this->disp_img_fname.begin(), this->disp_img_fname.end());
+
+    /** Name for the all the disparity event frames **/
+    fs::path path_disp_events = fs::path(config.root_folder)/ fs::path(config.disparity_events_folder)/fs::path("*.png");
+    std::cout<<path_disp_events.string()<<std::endl;
+    glob::glob glob_disp_e(path_disp_events.string());
+    while (glob_disp_e)
+    {
+        this->disp_event_fname.push_back(glob_disp_e.current_match());
+        glob_disp_e.next();
+    }
+    std::sort(this->disp_event_fname.begin(), this->disp_event_fname.end());
 
     return true;
 }
@@ -235,7 +256,10 @@ void Task::updateHook()
     std::cout<<"events first time["<<this->events.t.size()<<"]: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
     std::cout<<"imu first time["<<this->imu.t.size()<<"]: "<<this->imu.t[0]<<" last:"<<this->imu.t[this->imu.t.size()-1]<<std::endl;
     std::cout<<"image first time["<<this->image_ts.size()<<"]: "<<this->image_ts[0]<<" last:"<<this->image_ts[this->image_ts.size()-1]<<std::endl;
-    std::cout<<"disparity first time["<<this->depthmap_ts.size()<<"]: "<<this->depthmap_ts[0]<<" last:"<<this->depthmap_ts[this->depthmap_ts.size()-1]<<std::endl;
+    std::cout<<"disparity first time["<<this->disp_ts.size()<<"]: "<<this->disp_ts[0]<<" last:"<<this->disp_ts[this->disp_ts.size()-1]<<std::endl;
+    std::cout<<"Number of RGB images: "<<this->img_fname.size()<<std::endl;
+    std::cout<<"Number of disparity for RGB images: "<<this->disp_img_fname.size()<<std::endl;
+    std::cout<<"Number of disparity for event images: "<<this->disp_event_fname.size()<<std::endl;
 
 
  
