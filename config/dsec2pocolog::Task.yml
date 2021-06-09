@@ -10,6 +10,7 @@ config:
   out_image_size:
     width: 640
     height: 480
+  events_pkgsize: 20000
   root_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
   output_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
   images_folder: 'images/left'
@@ -18,5 +19,5 @@ config:
   img_ts_filename: 'images/timestamps.txt'
   events_filename: 'events/left/events.h5'
   imu_filename: 'imu_sync/left/imu.h5'
-  disparity_ts_filename: 'disparity/timestamp.txt'
+  disparity_ts_filename: 'disparity/timestamps.txt'
 
