@@ -3,10 +3,7 @@
 #ifndef DSEC2POCOLOG_TASK_TASK_HPP
 #define DSEC2POCOLOG_TASK_TASK_HPP
 
-/** Base types **/
-#include <base/samples/IMUSensors.hpp>
-#include <base/samples/EventArray.hpp>
-
+#include <base/samples/Frame.hpp>
 #include "dsec2pocolog/TaskBase.hpp"
 
 namespace dsec2pocolog{
@@ -66,9 +63,8 @@ namespace dsec2pocolog{
         std::vector<std::string> disp_img_fname;
         std::vector<std::string> disp_event_fname;
 
-        /** Output port variables **/
-        ::base::samples::EventArray event_msg;
-
+        /** Output ports **/
+        RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
 
     public:
         /** TaskContext constructor for Task

@@ -6,12 +6,23 @@
 #include <yaml-cpp/yaml.h>
 #include <yaml-cpp/parser.h>
 
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include <glob.h>
 
 #include <blosc_filter.h>
 #include <hdf5/serial/hdf5.h>
 #include <hdf5/serial/H5Cpp.h>
 #include <boost/filesystem.hpp>
+
+/** Base types **/
+#include <base/samples/IMUSensors.hpp>
+#include <base/samples/EventArray.hpp>
+
+/** Frame helper **/
+#include <frame_helper/FrameHelper.h>
 
 #include "Task.hpp"
 
@@ -41,7 +52,11 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
-    
+    /** Set the event frame member **/
+    ::base::samples::frame::Frame *img = new ::base::samples::frame::Frame();
+    this->img_msg.reset(img);
+    img = nullptr;
+
     char *version, *date;
     int r = register_blosc(&version, &date);
     printf("Blosc version info: %s (%s)\n", version, date);
@@ -210,7 +225,8 @@ bool Task::startHook()
     glob::glob glob_img(path_images.string());
     while (glob_img)
     {
-        this->img_fname.push_back(glob_img.current_match());
+        std::string path = (fs::path(config.root_folder)/fs::path(config.images_folder)/fs::path(glob_img.current_match())).string();
+        this->img_fname.push_back(path);
         glob_img.next();
     }
     std::sort(this->img_fname.begin(), this->img_fname.end());
@@ -221,7 +237,8 @@ bool Task::startHook()
     glob::glob glob_disp_i(path_disp_images.string());
     while (glob_disp_i)
     {
-        this->disp_img_fname.push_back(glob_disp_i.current_match());
+        std::string path = (fs::path(config.root_folder)/fs::path(config.disparity_images_folder)/fs::path(glob_disp_i.current_match())).string();
+        this->disp_img_fname.push_back(path);
         glob_disp_i.next();
     }
     std::sort(this->disp_img_fname.begin(), this->disp_img_fname.end());
@@ -232,7 +249,8 @@ bool Task::startHook()
     glob::glob glob_disp_e(path_disp_events.string());
     while (glob_disp_e)
     {
-        this->disp_event_fname.push_back(glob_disp_e.current_match());
+        std::string path = (fs::path(config.root_folder)/fs::path(config.disparity_events_folder)/fs::path(glob_disp_e.current_match())).string();
+        this->disp_event_fname.push_back(path);
         glob_disp_e.next();
     }
     std::sort(this->disp_event_fname.begin(), this->disp_event_fname.end());
@@ -261,8 +279,81 @@ void Task::updateHook()
     std::cout<<"Number of disparity for RGB images: "<<this->disp_img_fname.size()<<std::endl;
     std::cout<<"Number of disparity for event images: "<<this->disp_event_fname.size()<<std::endl;
 
+    /** Output port variables **/
+    ::base::samples::IMUSensors imu_msg;
+    ::base::samples::EventArray events_msg;
 
- 
+    /** Write the Events **/
+    for (size_t i=0; i<this->events.t.size(); ++i)
+    {
+        ::base::samples::Event ev(
+            this->events.x[i], this->events.y[i],
+            this->starting_time + ::base::Time::fromMicroseconds(this->events.t[i] + t_offset),
+            (uint8_t)this->events.p[i]);
+
+        if (events_msg.events.size() == 0)
+        {
+            events_msg.time = ev.ts;
+        }
+        events_msg.events.push_back(ev);
+
+        if (i%this->config.events_pkgsize == 0)
+        {
+            std::cout<<"events ["<<events_msg.events.size()<<"] at"<<events_msg.time.toString()<<std::endl;
+            events_msg.height = this->config.in_events_frame_size.height;
+            events_msg.width = this->config.in_events_frame_size.width;
+            this->_events.write(events_msg);
+            events_msg.events.clear();
+        }
+
+    }
+
+    /** Write the IMU **/
+    ::base::Time first_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[0] + t_offset);
+    ::base::Time last_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[this->events.t.size()-1] + t_offset);
+    for (size_t i=0; i<this->imu.t.size(); ++i)
+    {
+        ::base::Vector6d &values = this->imu.values[i];
+        ::base::samples::IMUSensors imusamples;
+        imusamples.time = this->starting_time + ::base::Time::fromMicroseconds(this->imu.t[i]);
+        imusamples.acc << GRAVITY * values[0], GRAVITY * values[1], GRAVITY * values[2]; //[m/s^2]
+        imusamples.gyro << values[3], values[4], values[5]; //[rad/s]
+        if (imusamples.time >= first_ev_time)
+        {
+            std::cout<<"IMU at"<<imusamples.time.toString()<<std::endl;
+            this->_imu.write(imusamples);
+        }
+        if (imusamples.time > last_ev_time)
+            break;
+    }
+
+    /** Write the images **/
+    auto it_img =this->img_fname.begin();
+    auto it_ts =this->image_ts.begin();
+    std::cout<<"Writing images... ";
+    while(it_img != this->img_fname.end() && it_ts != this->image_ts.end())
+    {
+        /** Read the image file **/
+        cv::Mat img, orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
+
+        /** Resize the image to the desired in the config **/
+        cv::resize(orig_img, img, cv::Size(this->config.out_image_size.width, this->config.out_image_size.height), 0, 0);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();
+        img_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(img, *img_msg_ptr);
+
+        /** Write into the port **/
+        img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        img_msg_ptr->received_time = img_msg_ptr->time;
+        this->img_msg.reset(img_msg_ptr);
+        _frame.write(this->img_msg);
+
+        ++it_img;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
 }
 
 void Task::errorHook()
