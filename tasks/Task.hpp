@@ -3,6 +3,8 @@
 #ifndef DSEC2POCOLOG_TASK_TASK_HPP
 #define DSEC2POCOLOG_TASK_TASK_HPP
 
+#include <opencv2/core/mat.hpp>
+
 #include <base/samples/Frame.hpp>
 #include "dsec2pocolog/TaskBase.hpp"
 
@@ -62,6 +64,8 @@ namespace dsec2pocolog{
         std::vector<std::string> img_fname;
         std::vector<std::string> disp_img_fname;
         std::vector<std::string> disp_event_fname;
+
+        cv::Vec4d event_dist_coeff;
 
         /** Output ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;

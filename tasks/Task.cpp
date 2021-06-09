@@ -6,9 +6,11 @@
 #include <yaml-cpp/yaml.h>
 #include <yaml-cpp/parser.h>
 
+#include <Eigen/Core>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/eigen.hpp>
 
 #include <glob.h>
 
@@ -88,6 +90,28 @@ bool Task::startHook()
     }
 
     std::cout<<"DSEC Dataset Starting Time: "<<this->starting_time.toString()<<std::endl;
+
+    /** Read the calibration file **/
+    fs::path calib_fname = fs::path(config.root_folder)/ fs::path(config.cam_to_cam_filename);
+    YAML::Node calibmap = YAML::LoadFile(calib_fname.string());
+
+    {
+        YAML::const_iterator it=calibmap.begin();
+        const std::string &key=it->first.as<std::string>();
+        YAML::Node attributes = it->second;
+        std::cout<<"KEY: "<<key<<"\nATTRIBUTES: "<<attributes<<std::endl;
+        YAML::Node event_cam = attributes["cam" + this->config.event_camera_idx];
+        YAML::Node event_dist = event_cam["distortion_coeffs"];
+        std::cout<<"CONCAT: "<<"cam" + this->config.event_camera_idx<<std::endl;
+
+        std::cout<<"DIST0: "<<event_dist[0]<<","<<event_dist[1]<<","<<event_dist[2]<<","<<event_dist[3]<<std::endl;
+        this->event_dist_coeff = cv::Vec4d(event_dist[0].as<double>(),
+                                        event_dist[1].as<double>(),
+                                        event_dist[2].as<double>(),
+                                        event_dist[3].as<double>());
+        std::cout<<"*******************************"<<std::endl;
+    }
+    std::cout<<"COEFF:"<<this->event_dist_coeff<<std::endl;
 
     /** Read images timestamps **/
     fs::path img_ts_fname = fs::path(config.root_folder)/ fs::path(config.img_ts_filename);

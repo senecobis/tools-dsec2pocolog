@@ -15,9 +15,10 @@ namespace dsec2pocolog
 {
     struct Config
     {
-        std::string meta_filename;//the meta yaml file 
+        std::string meta_filename;//the meta yaml file
+        std::string event_camera_idx; //index of the camera in the calib [0, 1, 2, 3]
+        std::string rgb_camera_idx;  //index of the camare in the calib [0, 1, 2, 3]
 
-        base::samples::frame::frame_size_t in_image_size;// input image resolution
         base::samples::frame::frame_size_t in_events_frame_size; // input event image resolution
         base::samples::frame::frame_size_t out_image_size; // desired output image resolution
 
@@ -35,6 +36,8 @@ namespace dsec2pocolog
         std::string events_filename; //HDF5 file for events
         std::string imu_filename; //HDF5 file for imu
         std::string disparity_ts_filename; //file with timestamps
+        std::string cam_to_imu_filename; //T_cam_imu
+        std::string cam_to_cam_filename; //calibration file
     };
 }
 

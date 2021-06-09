@@ -1,9 +1,8 @@
 --- name:thun_01_a_left
 config:
   meta_filename: 'meta.yaml'
-  in_image_size:
-    width: 1440
-    height: 1080
+  event_camera_idx: '0'
+  rgb_camera_idx: '1'
   in_events_frame_size:
     width: 640
     height: 480
@@ -20,4 +19,6 @@ config:
   events_filename: 'events/left/events.h5'
   imu_filename: 'imu_sync/left/imu.h5'
   disparity_ts_filename: 'disparity/timestamps.txt'
+  cam_to_imu_filename: 'calibration/cam_to_imu.yaml'
+  cam_to_cam_filename: 'calibration/cam_to_cam.yaml'
 
