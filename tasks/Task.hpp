@@ -62,6 +62,7 @@ namespace dsec2pocolog{
         dsec2pocolog::IMU imu;
         std::vector<double> image_ts;
         std::vector<double> depthmap_ts;
+        std::vector<std::string> img_fname;
 
         /** Output port variables **/
         ::base::samples::EventArray event_msg;

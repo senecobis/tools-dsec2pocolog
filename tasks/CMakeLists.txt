@@ -4,6 +4,7 @@ include(dsec2pocologTaskLib)
 
 find_package(HDF5 COMPONENTS CXX REQUIRED)
 find_package(Boost COMPONENTS system)
+find_package(glob COMPONENTS system)
 
 # Quick fix: we dont have pckgconfig for this libraries
 set(BLOSC_LIBRARY
@@ -11,6 +12,10 @@ set(BLOSC_LIBRARY
         ${CMAKE_INSTALL_PREFIX}/lib/libblosc_filter.so
         ${CMAKE_INSTALL_PREFIX}/lib/libblosc.so
         )
+
+set(GLOB_LIBRARY
+        ${CMAKE_INSTALL_PREFIX}/lib/libglob.so
+    )
 
 include_directories(
         ${HDF5_INCLUDE_DIR}
@@ -27,6 +32,7 @@ TARGET_LINK_LIBRARIES(${DSEC2POCOLOG_TASKLIB_NAME}
     ${QT_LIBRARIES}
     ${HDF5_CXX_LIBRARIES} 
     ${BLOSC_LIBRARY} 
+    ${GLOB_LIBRARY} 
     ${DSEC2POCOLOG_TASKLIB_DEPENDENT_LIBRARIES})
 SET_TARGET_PROPERTIES(${DSEC2POCOLOG_TASKLIB_NAME}
     PROPERTIES LINK_INTERFACE_LIBRARIES "${DSEC2POCOLOG_TASKLIB_INTERFACE_LIBRARIES}")

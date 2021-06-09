@@ -9,6 +9,7 @@
   <depend package="base/cmake" />
   <depend package="base/orogen/types" />
   <depend package="external/hdf5_blosc" />
+  <depend package="external/glob" />
   <rosdep name="boost" />
   <rosdep name="hdf5" />
   <rosdep name="yaml-cpp" />

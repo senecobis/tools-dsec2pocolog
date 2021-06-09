@@ -6,6 +6,8 @@
 #include <yaml-cpp/yaml.h>
 #include <yaml-cpp/parser.h>
 
+#include <glob.h>
+
 #include <blosc_filter.h>
 #include <hdf5/serial/hdf5.h>
 #include <hdf5/serial/H5Cpp.h>
@@ -200,6 +202,19 @@ bool Task::startHook()
         error.printErrorStack();
         return -1;
     }
+
+
+    /** Name for the all the images **/
+    fs::path path_images = fs::path(config.root_folder)/ fs::path(config.images_folder)/fs::path("*.png");
+    std::cout<<path_images.string()<<std::endl;
+    glob::glob glob(path_images.string());
+    while (glob)
+    {
+        std::cout << glob.current_match() << std::endl;
+        this->img_fname.push_back(glob.current_match());
+        glob.next();
+    }
+
 
     return true;
 }
