@@ -1,6 +1,8 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
+#include <iostream>
 #include <iomanip>
+#include <fstream>
 #include <yaml-cpp/yaml.h>
 #include <yaml-cpp/parser.h>
 
@@ -69,6 +71,38 @@ bool Task::startHook()
     }
 
     std::cout<<"DSEC Dataset Starting Time: "<<this->starting_time.toString()<<std::endl;
+
+    /** Read images timestamps **/
+    fs::path img_ts_fname = fs::path(config.root_folder)/ fs::path(config.img_ts_filename);
+    std::ifstream infile;
+    infile.open(img_ts_fname.string());
+    if (!infile)
+    {
+        std::cout << "Unable to open file:"<<img_ts_fname.string()<<std::endl;
+        return false; // terminate with error
+    }
+
+    double ts;
+    while (infile >> ts)
+    {
+        this->image_ts.push_back(ts);
+    }
+    infile.close();
+
+    /** Read depthmaps timestamps **/
+    fs::path disp_ts_fname = fs::path(config.root_folder)/ fs::path(config.disparity_ts_filename);
+    infile.open(disp_ts_fname.string());
+    if (!infile)
+    {
+        std::cout << "Unable to open file:"<<disp_ts_fname.string()<<std::endl;
+        return false; // terminate with error
+    }
+
+    while (infile >> ts)
+    {
+        this->depthmap_ts.push_back(ts);
+    }
+    infile.close();
 
     /** Read Events data **/
     fs::path events_fname = fs::path(config.root_folder)/ fs::path(config.events_filename);
@@ -183,8 +217,13 @@ void Task::updateHook()
     std::cout << std::fixed;
     std::cout << std::setprecision(3);
     float t_offset = this->events.offset[0];
-    std::cout<<"events first time: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
-    std::cout<<"imu first time: "<<this->imu.t[0]<<" last:"<<this->imu.t[this->imu.t.size()-1]<<std::endl;
+    std::cout<<"events first time["<<this->events.t.size()<<"]: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
+    std::cout<<"imu first time["<<this->imu.t.size()<<"]: "<<this->imu.t[0]<<" last:"<<this->imu.t[this->imu.t.size()-1]<<std::endl;
+    std::cout<<"image first time["<<this->image_ts.size()<<"]: "<<this->image_ts[0]<<" last:"<<this->image_ts[this->image_ts.size()-1]<<std::endl;
+    std::cout<<"disparity first time["<<this->depthmap_ts.size()<<"]: "<<this->depthmap_ts[0]<<" last:"<<this->depthmap_ts[this->depthmap_ts.size()-1]<<std::endl;
+
+
+ 
 }
 
 void Task::errorHook()

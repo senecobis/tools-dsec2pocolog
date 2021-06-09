@@ -21,6 +21,8 @@ namespace dsec2pocolog
         base::samples::frame::frame_size_t in_events_frame_size; // input event image resolution
         base::samples::frame::frame_size_t out_image_size; // desired output image resolution
 
+        unsigned int events_pkgsize;
+
         /** Path to folders, all path folders are relative to the root folder **/
         std::string root_folder; // path root folder to the dataset
         std::string output_folder; // path to output folder

@@ -60,6 +60,8 @@ namespace dsec2pocolog{
         ::base::Time starting_time;
         dsec2pocolog::Event events;
         dsec2pocolog::IMU imu;
+        std::vector<double> image_ts;
+        std::vector<double> depthmap_ts;
 
         /** Output port variables **/
         ::base::samples::EventArray event_msg;
