@@ -3,7 +3,10 @@
 #ifndef DSEC2POCOLOG_VIZ_TASK_HPP
 #define DSEC2POCOLOG_VIZ_TASK_HPP
 
+#include <opencv2/core/mat.hpp>
+#include <base/samples/Frame.hpp>
 #include "dsec2pocolog/VizBase.hpp"
+#include "dsec2pocolog/Task.hpp"
 
 namespace dsec2pocolog{
 
@@ -26,7 +29,23 @@ namespace dsec2pocolog{
 	friend class VizBase;
     protected:
 
+        /* Config values **/
+        std::string calib_file;
 
+        /** Calibration Files **/
+        CameraCalib event_cam_calib;
+        CameraCalib rgb_cam_calib;
+
+        /** variables **/
+        cv::Mat frame;
+
+        /** Input ports **/
+        RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> frame_ptr;
+
+        /** Output ports **/
+        RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
+ 
+        cv::Mat createFrame (cv::Mat &frame,  unsigned int &height, unsigned int &width,  std::vector<cv::Point2f> &coord, std::vector<uint8_t> &p);
 
     public:
         /** TaskContext constructor for Viz
