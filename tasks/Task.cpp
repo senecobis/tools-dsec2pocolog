@@ -370,7 +370,7 @@ void Task::updateHook()
         /** Read the image file **/
         cv::Mat img, orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
 
-        /** Resize the image to the desired in the config **/
+        /** Resize to the event image size to have the same **/
         cv::resize(orig_img, img, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0);
 
         /** Convert from cv mat to frame **/
@@ -389,30 +389,53 @@ void Task::updateHook()
     }
     std::cout<<"[DONE]"<<std::endl;
     
-    /** Write the disparity **/
+    /** Write the disparity at RGB camera frame **/
     auto it_disp =this->disp_img_fname.begin();
     it_ts =this->disp_ts.begin();
-    std::cout<<"Writing depthmaps images from disparity...";
+    std::cout<<"Writing disparity in images...";
     while(it_disp != this->disp_img_fname.end() && it_ts != this->disp_ts.end())
     {
         /** Read the disp image file **/
-        cv::Mat disp_float, depthmap, disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
-        disp /= 256.0;
-        disp.convertTo(disp_float,CV_32F);
-
-
-        cv::reprojectImageTo3D(disp_float, depthmap, this->rgb_cam_calib.Q, false, CV_32F);
+        cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+        
+        /** Resize to the event image size to have the same **/
+        cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
 
         /** Convert from cv mat to frame **/
         ::base::samples::frame::Frame *disp_img_msg_ptr = this->disp_img_msg.write_access();
         disp_img_msg_ptr->image.clear();
-        frame_helper::FrameHelper::copyMatToFrame(disp_float, *disp_img_msg_ptr);
+        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_img_msg_ptr);
 
         /** Write into the port **/
         disp_img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
         disp_img_msg_ptr->received_time = disp_img_msg_ptr->time;
         this->disp_img_msg.reset(disp_img_msg_ptr);
-        _depth_img.write(this->disp_img_msg);
+        _disp_img.write(this->disp_img_msg);
+
+        ++it_disp;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+
+    /** Write the disparity at event camera frame **/
+    it_disp =this->disp_event_fname.begin();
+    it_ts =this->disp_ts.begin();
+    std::cout<<"Writing disparity in events...";
+    while(it_disp != this->disp_event_fname.end() && it_ts != this->disp_ts.end())
+    {
+        /** Read the disp image file **/
+        cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *disp_event_msg_ptr = this->disp_event_msg.write_access();
+        disp_event_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_event_msg_ptr);
+
+        /** Write into the port **/
+        disp_event_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        disp_event_msg_ptr->received_time = disp_event_msg_ptr->time;
+        this->disp_event_msg.reset(disp_event_msg_ptr);
+        _disp_events.write(this->disp_event_msg);
 
         ++it_disp;
         ++it_ts;

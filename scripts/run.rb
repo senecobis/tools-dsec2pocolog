@@ -9,7 +9,7 @@ Orocos.initialize
 
 Orocos::Process.run 'dsec2pocolog::Task' => 'dsec2pocolog' do
     # log all the output ports
-    #Orocos.log_all_ports 
+    Orocos.log_all_ports 
     Orocos.conf.load_dir('../config')
 
     # Get the task

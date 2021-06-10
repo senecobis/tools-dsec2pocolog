@@ -48,11 +48,11 @@ task_context "Task" do
     output_port('frame', ro_ptr('base::samples::frame::Frame')).
         doc 'RGB Image frame'
 
-    output_port('depth_img', ro_ptr('base::samples::frame::Frame')).
-        doc 'Depthmap in the RGB camera'
+    output_port('disp_img', ro_ptr('base::samples::frame::Frame')).
+        doc 'Disparity in the RGB camera'
 
-    output_port('depth_events', ro_ptr('base::samples::frame::Frame')).
-        doc 'Depthmap in the event camera'
+    output_port('disp_events', ro_ptr('base::samples::frame::Frame')).
+        doc 'Disparity in the event camera'
 
     fd_driven
 end
@@ -77,7 +77,7 @@ task_context "Viz" do
         doc 'RGB Image frame'
 
     #******************************
-    #******* Input Ports *********
+    #******* Output Ports *********
     #******************************
     input_port('frame', ro_ptr('base::samples::frame::Frame')).
         doc 'RGB + Events Image frame'
