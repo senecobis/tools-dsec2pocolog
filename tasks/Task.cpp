@@ -11,6 +11,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <opencv2/calib3d.hpp>
 
 #include <glob.h>
 
@@ -54,10 +55,20 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
-    /** Set the event frame member **/
+    /** Set the img member **/
     ::base::samples::frame::Frame *img = new ::base::samples::frame::Frame();
     this->img_msg.reset(img);
     img = nullptr;
+
+    /** Set the disp event member **/
+    ::base::samples::frame::Frame *disp_img = new ::base::samples::frame::Frame();
+    this->disp_img_msg.reset(disp_img);
+    disp_img = nullptr;
+
+    /** Set the disp event member **/
+    ::base::samples::frame::Frame *disp_event = new ::base::samples::frame::Frame();
+    this->disp_event_msg.reset(disp_event);
+    disp_event = nullptr;
 
     char *version, *date;
     int r = register_blosc(&version, &date);
@@ -379,6 +390,35 @@ void Task::updateHook()
     std::cout<<"[DONE]"<<std::endl;
     
     /** Write the disparity **/
+    auto it_disp =this->disp_img_fname.begin();
+    it_ts =this->disp_ts.begin();
+    std::cout<<"Writing depthmaps images from disparity...";
+    while(it_disp != this->disp_img_fname.end() && it_ts != this->disp_ts.end())
+    {
+        /** Read the disp image file **/
+        cv::Mat disp_float, depthmap, disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+        disp /= 256.0;
+        disp.convertTo(disp_float,CV_32F);
+
+
+        cv::reprojectImageTo3D(disp_float, depthmap, this->rgb_cam_calib.Q, false, CV_32F);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *disp_img_msg_ptr = this->disp_img_msg.write_access();
+        disp_img_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(disp_float, *disp_img_msg_ptr);
+
+        /** Write into the port **/
+        disp_img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        disp_img_msg_ptr->received_time = disp_img_msg_ptr->time;
+        this->disp_img_msg.reset(disp_img_msg_ptr);
+        _depth_img.write(this->disp_img_msg);
+
+        ++it_disp;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+ 
 }
 
 void Task::errorHook()

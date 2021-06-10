@@ -81,6 +81,8 @@ namespace dsec2pocolog{
 
         /** Output ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
+        RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_img_msg;
+        RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_event_msg;
 
     public:
         /** TaskContext constructor for Task
