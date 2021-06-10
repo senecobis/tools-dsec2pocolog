@@ -18,10 +18,12 @@ Orocos.initialize
 
 Orocos::Process.run 'dsec2pocolog::Viz' => 'dsecviz' do
 
+    Orocos.conf.load_dir('../config')
+
     # get the task
     STDERR.print "setting up dsecviz..."
     viz = Orocos.name_service.get 'dsecviz'
-    Orocos.conf.apply(icp, ['thun_01_a_left'], :override => true )
+    Orocos.conf.apply(viz, ['thun_01_a_left'], :override => true )
     STDERR.puts "done"
 
     # logs files
