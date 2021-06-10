@@ -18,7 +18,7 @@ namespace dsec2pocolog{
         cv::Mat Rect;// rect matrix
         std::string distortion_model; //model
         size_t height, width; //image size
-        cv::Mat T_dd; //disparity to depth
+        cv::Mat Q; //disparity to depth as in https://docs.opencv.org/4.5.2/d9/d0c/group__calib3d.html#ga1bc1152bd57d63bc524204f21fde6e02
     };
 
     struct Event
