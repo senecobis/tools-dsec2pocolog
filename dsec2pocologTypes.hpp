@@ -36,6 +36,9 @@ namespace dsec2pocolog
         std::string cam_to_imu_filename; //T_cam_imu
         std::string cam_to_cam_filename; //calibration file
     };
+
+    /** Color encodeing: first color positive event, seconds color negative event **/
+    enum COLOR_ENCODING{BLUE_RED, GREEN_RED, BLUE_BLACK};
 }
 
 #endif
