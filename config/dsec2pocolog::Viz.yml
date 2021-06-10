@@ -1,2 +1,5 @@
 --- name:thun_01_a_left
+color_encoding: :GREEN_RED
+event_camera_idx: '0'
+rgb_camera_idx: '1'
 calib_file: '/media/javi/JAVIS/datasets/dsec/thun_01_a/calibration/cam_to_cam.yaml'
