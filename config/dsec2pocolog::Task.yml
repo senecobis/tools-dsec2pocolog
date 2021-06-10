@@ -3,12 +3,6 @@ config:
   meta_filename: 'meta.yaml'
   event_camera_idx: '0'
   rgb_camera_idx: '1'
-  in_events_frame_size:
-    width: 640
-    height: 480
-  out_image_size:
-    width: 640
-    height: 480
   events_pkgsize: 20000
   root_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
   output_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
