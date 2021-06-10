@@ -65,7 +65,11 @@ task_context "Viz" do
     #**************************
     #****Task Properties ****
     #***************************
+    property "color_encoding", "dsec2pocolog::COLOR_ENCODING"
+        doc "Color encoding: RED_BLUE, GREEN_RED, BLUE_BLACK"
     property "calib_file", "std::string"
+    property "event_camera_idx", "std::string"
+    property "rgb_camera_idx", "std::string"
 
     #******************************
     #******* Input Ports *********
