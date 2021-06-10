@@ -10,6 +10,17 @@
 
 namespace dsec2pocolog{
 
+    struct CameraCalib
+    {
+        cv::Mat K; // intrinsics
+        cv::Mat K_; //rectified K
+        cv::Vec4d D; //distortion
+        cv::Mat Rect;// rect matrix
+        std::string distortion_model; //model
+        size_t height, width; //image size
+        cv::Mat T_dd; //disparity to depth
+    };
+
     struct Event
     {
         /** Variable **/
@@ -65,7 +76,8 @@ namespace dsec2pocolog{
         std::vector<std::string> disp_img_fname;
         std::vector<std::string> disp_event_fname;
 
-        cv::Vec4d event_dist_coeff;
+        CameraCalib event_cam_calib;
+        CameraCalib rgb_cam_calib;
 
         /** Output ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
@@ -140,6 +152,9 @@ namespace dsec2pocolog{
         void cleanupHook();
 
         void readH5Dataset(std::string fname, std::string dataset, std::vector<double> &data);
+
+        /** DSEC use ruamel python stupid library to wirte the yaml **/
+        CameraCalib readCameraInfo(std::string calib_fname, std::string cam_id);
     };
 }
 

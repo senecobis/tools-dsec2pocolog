@@ -91,27 +91,26 @@ bool Task::startHook()
 
     std::cout<<"DSEC Dataset Starting Time: "<<this->starting_time.toString()<<std::endl;
 
-    /** Read the calibration file **/
+    /** Read the event camera calibration file **/
     fs::path calib_fname = fs::path(config.root_folder)/ fs::path(config.cam_to_cam_filename);
-    YAML::Node calibmap = YAML::LoadFile(calib_fname.string());
-
-    {
-        YAML::const_iterator it=calibmap.begin();
-        const std::string &key=it->first.as<std::string>();
-        YAML::Node attributes = it->second;
-        std::cout<<"KEY: "<<key<<"\nATTRIBUTES: "<<attributes<<std::endl;
-        YAML::Node event_cam = attributes["cam" + this->config.event_camera_idx];
-        YAML::Node event_dist = event_cam["distortion_coeffs"];
-        std::cout<<"CONCAT: "<<"cam" + this->config.event_camera_idx<<std::endl;
-
-        std::cout<<"DIST0: "<<event_dist[0]<<","<<event_dist[1]<<","<<event_dist[2]<<","<<event_dist[3]<<std::endl;
-        this->event_dist_coeff = cv::Vec4d(event_dist[0].as<double>(),
-                                        event_dist[1].as<double>(),
-                                        event_dist[2].as<double>(),
-                                        event_dist[3].as<double>());
-        std::cout<<"*******************************"<<std::endl;
-    }
-    std::cout<<"COEFF:"<<this->event_dist_coeff<<std::endl;
+    this->event_cam_calib = readCameraInfo(calib_fname.string(),this->config.event_camera_idx );
+    std::cout<<"COEFF:"<<this->event_cam_calib.D<<std::endl;
+    std::cout<<"Model:"<<this->event_cam_calib.distortion_model<<std::endl;
+    std::cout<<"Height:"<<this->event_cam_calib.height<<std::endl;
+    std::cout<<"Width:"<<this->event_cam_calib.width<<std::endl;
+    std::cout<<"K:"<<this->event_cam_calib.K<<std::endl;
+    std::cout<<"K_:"<<this->event_cam_calib.K_<<std::endl;
+    std::cout<<"Rect:"<<this->event_cam_calib.Rect<<std::endl;
+    std::cout<<"T:"<<this->event_cam_calib.T_dd<<std::endl;
+    this->rgb_cam_calib = readCameraInfo(calib_fname.string(),this->config.rgb_camera_idx );
+    std::cout<<"COEFF:"<<this->rgb_cam_calib.D<<std::endl;
+    std::cout<<"Model:"<<this->rgb_cam_calib.distortion_model<<std::endl;
+    std::cout<<"Height:"<<this->rgb_cam_calib.height<<std::endl;
+    std::cout<<"Width:"<<this->rgb_cam_calib.width<<std::endl;
+    std::cout<<"K:"<<this->rgb_cam_calib.K<<std::endl;
+    std::cout<<"K_:"<<this->rgb_cam_calib.K_<<std::endl;
+    std::cout<<"Rect:"<<this->rgb_cam_calib.Rect<<std::endl;
+    std::cout<<"T:"<<this->rgb_cam_calib.T_dd<<std::endl;
 
     /** Read images timestamps **/
     fs::path img_ts_fname = fs::path(config.root_folder)/ fs::path(config.img_ts_filename);
@@ -293,7 +292,7 @@ void Task::updateHook()
     std::cout<<"imu:"<<this->imu.values.size()<<std::endl;
     std::cout<<"imu time:"<<this->imu.t.size()<<std::endl;
     std::cout << std::fixed;
-    std::cout << std::setprecision(3);
+    std::cout << std::setprecision(6);
     float t_offset = this->events.offset[0];
     std::cout<<"events first time["<<this->events.t.size()<<"]: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
     std::cout<<"imu first time["<<this->imu.t.size()<<"]: "<<this->imu.t[0]<<" last:"<<this->imu.t[this->imu.t.size()-1]<<std::endl;
@@ -324,8 +323,8 @@ void Task::updateHook()
         if (i%this->config.events_pkgsize == 0)
         {
             std::cout<<"events ["<<events_msg.events.size()<<"] at"<<events_msg.time.toString()<<std::endl;
-            events_msg.height = this->config.in_events_frame_size.height;
-            events_msg.width = this->config.in_events_frame_size.width;
+            events_msg.height = this->event_cam_calib.height;
+            events_msg.width = this->event_cam_calib.width;
             this->_events.write(events_msg);
             events_msg.events.clear();
         }
@@ -361,7 +360,7 @@ void Task::updateHook()
         cv::Mat img, orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
 
         /** Resize the image to the desired in the config **/
-        cv::resize(orig_img, img, cv::Size(this->config.out_image_size.width, this->config.out_image_size.height), 0, 0);
+        cv::resize(orig_img, img, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0);
 
         /** Convert from cv mat to frame **/
         ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();
@@ -455,4 +454,158 @@ void Task::readH5Dataset(std::string fname, std::string dataset, std::vector<dou
 
     // close the HDF5 file
     file.close();
+}
+
+CameraCalib Task::readCameraInfo(std::string calib_fname, std::string cam_id)
+{
+    CameraCalib calib;
+
+
+    /* Lambda methods **/
+    auto intrinsics = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes)
+    {
+        //std::cout<<"KEY: "<<key<<"\nATTRIBUTES: "<<attributes<<std::endl;
+        YAML::Node event_cam = attributes["cam" + cam_id];
+        YAML::Node event_dist = event_cam["distortion_coeffs"];
+        calib.D = cv::Vec4d(event_dist[0].as<double>(),
+                            event_dist[1].as<double>(),
+                            event_dist[2].as<double>(),
+                            event_dist[3].as<double>());
+        calib.distortion_model = event_cam["distortion_model"].as<std::string>();
+        calib.width = event_cam["resolution"][0].as<int>();
+        calib.height = event_cam["resolution"][1].as<int>();
+        YAML::Node cam_matrix = event_cam["camera_matrix"];
+        calib.K = cv::Mat_<double>::eye(3, 3);
+        calib.K.at<double>(0,0) = cam_matrix[0].as<double>();
+        calib.K.at<double>(0,2) = cam_matrix[2].as<double>();
+        calib.K.at<double>(1,1) = cam_matrix[1].as<double>();
+        calib.K.at<double>(1,2) = cam_matrix[3].as<double>();
+        /** Get  rectified intrinsics **/
+        event_cam = attributes["camRect" + cam_id];
+        cam_matrix = event_cam["camera_matrix"];
+        calib.K_ = cv::Mat_<double>::eye(3, 3);
+        calib.K_.at<double>(0,0) = cam_matrix[0].as<double>();
+        calib.K_.at<double>(0,2) = cam_matrix[2].as<double>();
+        calib.K_.at<double>(1,1) = cam_matrix[1].as<double>();
+        calib.K_.at<double>(1,2) = cam_matrix[3].as<double>();
+    };
+    
+    auto extrinsics = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes)
+    {
+        YAML::Node rect_matrix = attributes["R_rect" + cam_id];
+        calib.Rect = cv::Mat_<double>::eye(3, 3);
+        calib.Rect.at<double>(0,0) = rect_matrix[0][0].as<double>();
+        calib.Rect.at<double>(0,1) = rect_matrix[0][1].as<double>();
+        calib.Rect.at<double>(0,2) = rect_matrix[0][2].as<double>();
+        calib.Rect.at<double>(1,0) = rect_matrix[1][0].as<double>();
+        calib.Rect.at<double>(1,1) = rect_matrix[1][1].as<double>();
+        calib.Rect.at<double>(1,2) = rect_matrix[1][2].as<double>();
+        calib.Rect.at<double>(2,0) = rect_matrix[2][0].as<double>();
+        calib.Rect.at<double>(2,1) = rect_matrix[2][1].as<double>();
+        calib.Rect.at<double>(2,2) = rect_matrix[2][2].as<double>();
+    };
+    auto disparity = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes, std::string id)
+    {
+        calib.T_dd = cv::Mat_<double>::eye(4, 4);
+        YAML::Node M = attributes[id];
+        calib.T_dd.at<double>(0,0) = M[0][0].as<double>();
+        calib.T_dd.at<double>(0,1) = M[0][1].as<double>();
+        calib.T_dd.at<double>(0,2) = M[0][2].as<double>();
+        calib.T_dd.at<double>(0,3) = M[0][3].as<double>();
+        calib.T_dd.at<double>(1,0) = M[1][0].as<double>();
+        calib.T_dd.at<double>(1,1) = M[1][1].as<double>();
+        calib.T_dd.at<double>(1,2) = M[1][2].as<double>();
+        calib.T_dd.at<double>(1,3) = M[1][3].as<double>();
+        calib.T_dd.at<double>(2,0) = M[2][0].as<double>();
+        calib.T_dd.at<double>(2,1) = M[2][1].as<double>();
+        calib.T_dd.at<double>(2,2) = M[2][2].as<double>();
+        calib.T_dd.at<double>(2,3) = M[2][3].as<double>();
+        calib.T_dd.at<double>(3,0) = M[3][0].as<double>();
+        calib.T_dd.at<double>(3,1) = M[3][1].as<double>();
+        calib.T_dd.at<double>(3,2) = M[3][2].as<double>();
+        calib.T_dd.at<double>(3,3) = M[3][3].as<double>();
+    };
+
+    YAML::Node calibmap = YAML::LoadFile(calib_fname);
+    YAML::const_iterator it=calibmap.begin();
+    for(YAML::const_iterator it=calibmap.begin(); it!=calibmap.end(); ++it)
+    {
+        const std::string &key=it->first.as<std::string>();
+        YAML::Node attributes = it->second;
+        if (key.compare("intrinsics") == 0)
+        {
+            /** Read intrinsics **/
+            intrinsics(key, attributes);
+        }
+        else if (key.compare("extrinsics") == 0)
+        {
+            /** Read Extrinsics **/
+            extrinsics(key, attributes);
+        }
+        else if (key.compare("disparity_to_depth") == 0)
+        {
+            /** Read the disprity to depth info **/
+            if(cam_id.compare("0") == 0)
+                disparity(key, attributes, "cams_03");
+            else
+                disparity(key, attributes, "cams_12");
+
+        }
+    }
+
+
+
+    //YAML::Node calibmap = YAML::LoadFile(calib_fname);
+    //YAML::const_iterator it=calibmap.begin();
+    //const std::string &key=it->first.as<std::string>();
+
+    ///** Get intrinsics **/
+    //YAML::Node attributes = it->second;
+    //std::cout<<"KEY: "<<key<<"\nATTRIBUTES: "<<attributes<<std::endl;
+    //YAML::Node event_cam = attributes["cam" + cam_id];
+    //YAML::Node event_dist = event_cam["distortion_coeffs"];
+    //std::cout<<"CONCAT: "<<"cam" + cam_id<<std::endl;
+
+    //std::cout<<"DIST0: "<<event_dist[0]<<","<<event_dist[1]<<","<<event_dist[2]<<","<<event_dist[3]<<std::endl;
+    //calib.D = cv::Vec4d(event_dist[0].as<double>(),
+    //                    event_dist[1].as<double>(),
+    //                    event_dist[2].as<double>(),
+    //                    event_dist[3].as<double>());
+    //calib.distortion_model = event_cam["distortion_model"].as<std::string>();
+    //calib.width = event_cam["resolution"][0].as<int>();
+    //calib.height = event_cam["resolution"][1].as<int>();
+    //YAML::Node cam_matrix = event_cam["camera_matrix"];
+    //calib.K = cv::Mat_<double>::eye(3, 3);
+    //calib.K.at<double>(0,0) = cam_matrix[0].as<double>();
+    //calib.K.at<double>(0,2) = cam_matrix[2].as<double>();
+    //calib.K.at<double>(1,1) = cam_matrix[1].as<double>();
+    //calib.K.at<double>(1,2) = cam_matrix[3].as<double>();
+    ///** Get  rectified intrinsics **/
+    //event_cam = attributes["camRect" + cam_id];
+    //cam_matrix = event_cam["camera_matrix"];
+    //calib.K_ = cv::Mat_<double>::eye(3, 3);
+    //calib.K_.at<double>(0,0) = cam_matrix[0].as<double>();
+    //calib.K_.at<double>(0,2) = cam_matrix[2].as<double>();
+    //calib.K_.at<double>(1,1) = cam_matrix[1].as<double>();
+    //calib.K_.at<double>(1,2) = cam_matrix[3].as<double>();
+
+    //std::cout<<"*******************************"<<std::endl;
+
+    //++it;
+    ///** Get extrinsics **/
+    //attributes = it->second;
+    //YAML::Node rect_matrix = attributes["R_rect" + cam_id];
+    //std::cout<<"RECT0: "<<rect_matrix[0][0]<<std::endl;
+    //calib.Rect = cv::Mat_<double>::eye(3, 3);
+    //calib.Rect.at<double>(0,0) = rect_matrix[0][0].as<double>();
+    //calib.Rect.at<double>(0,1) = rect_matrix[0][1].as<double>();
+    //calib.Rect.at<double>(0,2) = rect_matrix[0][2].as<double>();
+    //calib.Rect.at<double>(1,0) = rect_matrix[1][0].as<double>();
+    //calib.Rect.at<double>(1,1) = rect_matrix[1][1].as<double>();
+    //calib.Rect.at<double>(1,2) = rect_matrix[1][2].as<double>();
+    //calib.Rect.at<double>(2,0) = rect_matrix[2][0].as<double>();
+    //calib.Rect.at<double>(2,1) = rect_matrix[2][1].as<double>();
+    //calib.Rect.at<double>(2,2) = rect_matrix[2][2].as<double>();
+
+    return calib;
 }
