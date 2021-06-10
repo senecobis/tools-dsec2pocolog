@@ -3,6 +3,9 @@
 #ifndef DSEC2POCOLOG_TASK_TASK_HPP
 #define DSEC2POCOLOG_TASK_TASK_HPP
 
+#include <yaml-cpp/yaml.h>
+#include <yaml-cpp/parser.h>
+
 #include <opencv2/core/mat.hpp>
 
 #include <base/samples/Frame.hpp>
@@ -156,7 +159,104 @@ namespace dsec2pocolog{
         void readH5Dataset(std::string fname, std::string dataset, std::vector<double> &data);
 
         /** DSEC use ruamel python stupid library to wirte the yaml **/
-        CameraCalib readCameraInfo(std::string calib_fname, std::string cam_id);
+        static CameraCalib readCameraInfo(std::string calib_fname, std::string cam_id)
+        {
+            CameraCalib calib;
+
+            /* Lambda methods **/
+            auto intrinsics = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes)
+            {
+                //std::cout<<"KEY: "<<key<<"\nATTRIBUTES: "<<attributes<<std::endl;
+                YAML::Node event_cam = attributes["cam" + cam_id];
+                YAML::Node event_dist = event_cam["distortion_coeffs"];
+                calib.D = cv::Vec4d(event_dist[0].as<double>(),
+                                    event_dist[1].as<double>(),
+                                    event_dist[2].as<double>(),
+                                    event_dist[3].as<double>());
+                calib.distortion_model = event_cam["distortion_model"].as<std::string>();
+                calib.width = event_cam["resolution"][0].as<int>();
+                calib.height = event_cam["resolution"][1].as<int>();
+                YAML::Node cam_matrix = event_cam["camera_matrix"];
+                calib.K = cv::Mat_<double>::eye(3, 3);
+                calib.K.at<double>(0,0) = cam_matrix[0].as<double>();
+                calib.K.at<double>(0,2) = cam_matrix[2].as<double>();
+                calib.K.at<double>(1,1) = cam_matrix[1].as<double>();
+                calib.K.at<double>(1,2) = cam_matrix[3].as<double>();
+                /** Get  rectified intrinsics **/
+                event_cam = attributes["camRect" + cam_id];
+                cam_matrix = event_cam["camera_matrix"];
+                calib.K_ = cv::Mat_<double>::eye(3, 3);
+                calib.K_.at<double>(0,0) = cam_matrix[0].as<double>();
+                calib.K_.at<double>(0,2) = cam_matrix[2].as<double>();
+                calib.K_.at<double>(1,1) = cam_matrix[1].as<double>();
+                calib.K_.at<double>(1,2) = cam_matrix[3].as<double>();
+            };
+ 
+            auto extrinsics = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes)
+            {
+                YAML::Node rect_matrix = attributes["R_rect" + cam_id];
+                calib.Rect = cv::Mat_<double>::eye(3, 3);
+                calib.Rect.at<double>(0,0) = rect_matrix[0][0].as<double>();
+                calib.Rect.at<double>(0,1) = rect_matrix[0][1].as<double>();
+                calib.Rect.at<double>(0,2) = rect_matrix[0][2].as<double>();
+                calib.Rect.at<double>(1,0) = rect_matrix[1][0].as<double>();
+                calib.Rect.at<double>(1,1) = rect_matrix[1][1].as<double>();
+                calib.Rect.at<double>(1,2) = rect_matrix[1][2].as<double>();
+                calib.Rect.at<double>(2,0) = rect_matrix[2][0].as<double>();
+                calib.Rect.at<double>(2,1) = rect_matrix[2][1].as<double>();
+                calib.Rect.at<double>(2,2) = rect_matrix[2][2].as<double>();
+            };
+            auto disparity = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes, std::string id)
+            {
+                calib.Q = cv::Mat_<double>::eye(4, 4);
+                YAML::Node M = attributes[id];
+                calib.Q.at<double>(0,0) = M[0][0].as<double>();
+                calib.Q.at<double>(0,1) = M[0][1].as<double>();
+                calib.Q.at<double>(0,2) = M[0][2].as<double>();
+                calib.Q.at<double>(0,3) = M[0][3].as<double>();
+                calib.Q.at<double>(1,0) = M[1][0].as<double>();
+                calib.Q.at<double>(1,1) = M[1][1].as<double>();
+                calib.Q.at<double>(1,2) = M[1][2].as<double>();
+                calib.Q.at<double>(1,3) = M[1][3].as<double>();
+                calib.Q.at<double>(2,0) = M[2][0].as<double>();
+                calib.Q.at<double>(2,1) = M[2][1].as<double>();
+                calib.Q.at<double>(2,2) = M[2][2].as<double>();
+                calib.Q.at<double>(2,3) = M[2][3].as<double>();
+                calib.Q.at<double>(3,0) = M[3][0].as<double>();
+                calib.Q.at<double>(3,1) = M[3][1].as<double>();
+                calib.Q.at<double>(3,2) = M[3][2].as<double>();
+                calib.Q.at<double>(3,3) = M[3][3].as<double>();
+            };
+
+            YAML::Node calibmap = YAML::LoadFile(calib_fname);
+            YAML::const_iterator it=calibmap.begin();
+            for(YAML::const_iterator it=calibmap.begin(); it!=calibmap.end(); ++it)
+            {
+                const std::string &key=it->first.as<std::string>();
+                YAML::Node attributes = it->second;
+                if (key.compare("intrinsics") == 0)
+                {
+                    /** Read intrinsics **/
+                    intrinsics(key, attributes);
+                }
+                else if (key.compare("extrinsics") == 0)
+                {
+                    /** Read Extrinsics **/
+                    extrinsics(key, attributes);
+                }
+                else if (key.compare("disparity_to_depth") == 0)
+                {
+                    /** Read the disprity to depth info **/
+                    if(cam_id.compare("0") == 0)
+                        disparity(key, attributes, "cams_03");
+                    else
+                        disparity(key, attributes, "cams_12");
+
+                }
+            }
+
+            return calib;
+        }
     };
 }
 
