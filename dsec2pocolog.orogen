@@ -31,9 +31,9 @@ task_context "Task" do
     # transition to a setup where all components use a configuration step.
     needs_configuration
 
-    #***************************
-    #**** Driver Properties ****
-    #***************************
+    #*************************
+    #****Task Properties ****
+    #*************************
     property "config", "dsec2pocolog::Config"
 
     #******************************
@@ -62,24 +62,24 @@ task_context "Viz" do
     # transition to a setup where all components use a configuration step.
     needs_configuration
 
-    #***************************
-    #**** Driver Properties ****
+    #**************************
+    #****Task Properties ****
     #***************************
     property "calib_file", "std::string"
 
     #******************************
     #******* Input Ports *********
     #******************************
-    output_port('events', 'base::samples::EventArray').
+    input_port('events', 'base::samples::EventArray').
         doc 'array of events'
 
-    output_port('img', ro_ptr('base::samples::frame::Frame')).
+    input_port('frame', ro_ptr('base::samples::frame::Frame')).
         doc 'RGB Image frame'
 
     #******************************
     #******* Output Ports *********
     #******************************
-    input_port('frame', ro_ptr('base::samples::frame::Frame')).
+    output_port('img', ro_ptr('base::samples::frame::Frame')).
         doc 'RGB + Events Image frame'
 
     port_driven
