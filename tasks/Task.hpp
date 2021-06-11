@@ -11,6 +11,8 @@
 #include <base/samples/Frame.hpp>
 #include "dsec2pocolog/TaskBase.hpp"
 
+#include <cmath>
+
 namespace dsec2pocolog{
 
     struct CameraCalib
@@ -87,6 +89,8 @@ namespace dsec2pocolog{
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_img_msg;
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_event_msg;
+
+        void convertData();
 
     public:
         /** TaskContext constructor for Task
@@ -309,6 +313,65 @@ namespace dsec2pocolog{
             }
 
             return calib;
+        }
+
+        template <typename P, typename V > 
+        static void drawEventsOnImage (const std::vector<P> &points, const std::vector<V> &values, cv::Mat &img,
+                                    cv::Vec3b &color_positive, cv::Vec3b &color_negative, const std::string &method = "nn")
+        {
+            auto clip = [](const int n, const int lower, const int upper)
+            {
+                return std::max(lower, std::min(n, upper));
+            };
+
+            cv::Size s = img.size();
+            auto it_x = points.begin();
+            auto it_p = values.begin();
+            while(it_x != points.end() && it_p != values.end())
+            {
+                /** Get the color based on the polarity **/
+                auto color = color_negative;
+                if ((*it_p))
+                {
+                    auto color = color_positive;
+                }
+
+                if (method.compare("nn") == 0)
+                {
+                    cv::Point2i x_int = *it_x;
+                    x_int.x = clip(x_int.x, 0, s.width - 1);
+                    x_int.y = clip(x_int.x, 0, s.height - 1);
+
+                    img.at<cv::Vec3b>(x_int) = color;
+                    
+                }
+                else if (method.compare("bilinear"))
+                {
+                    int x0 = floor(it_x->x);
+                    int y0 = floor(it_x->y);
+                    int x1 = x0 + 1;
+                    int y1 = x1 + 1;
+
+                    /** compute the voting weights. Note: assign weight 0 if the point is out of the image **/
+                    float wa = (x1 - it_x->x) * (y1 - it_x->y) * (x0 < s.width) * (y0 < s.height) * (x0 >= 0) * (y0 >= 0);
+                    float wb = (x1 - it_x->x) * (it_x->y - y0) * (x0 < s.width) * (y1 < s.height) * (x0 >= 0) * (y1 >= 0);
+                    float wc = (it_x->x - x0) * (y1 - it_x->y) * (x1 < s.width) * (y0 < s.height) * (x1 >= 0) * (y0 >= 0);
+                    float wd = (it_x->x - x0) * (it_x->y - y0) * (x1 < s.width) * (y1 < s.height) * (x1 >= 0) * (y1 >= 0);
+
+                    x0 = clip(x0, 0, s.width - 1);
+                    x1 = clip(x1, 0, s.width - 1);
+                    y0 = clip(y0, 0, s.height - 1);
+                    y1 = clip(y1, 0, s.height - 1);
+ 
+                    img.at<cv::Vec3b>(x0, y0) = color;
+                    img.at<cv::Vec3b>(x0, y1) = color;
+                    img.at<cv::Vec3b>(x1, y0) = color;
+                    img.at<cv::Vec3b>(x1, y1) = color;
+                }
+                ++it_x;
+                ++it_p;
+            }
+            return;
         }
     };
 }

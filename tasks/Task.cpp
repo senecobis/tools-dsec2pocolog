@@ -291,13 +291,19 @@ bool Task::startHook()
     }
     std::sort(this->disp_event_fname.begin(), this->disp_event_fname.end());
 
+
+    this->convertData();
+
     return true;
 }
 
 void Task::updateHook()
 {
     TaskBase::updateHook();
+}
 
+void Task::convertData()
+{
     std::cout<<"t_size:"<<this->events.t.size()<<std::endl;
     std::cout<<"x_size:"<<this->events.x.size()<<std::endl;
     std::cout<<"y_size:"<<this->events.y.size()<<std::endl;
