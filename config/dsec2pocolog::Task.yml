@@ -16,3 +16,21 @@ config:
   cam_to_imu_filename: 'calibration/cam_to_imu.yaml'
   cam_to_cam_filename: 'calibration/cam_to_cam.yaml'
 
+--- name:interlaken_00_a_left
+config:
+  meta_filename: 'meta.yaml'
+  event_camera_idx: '0'
+  rgb_camera_idx: '1'
+  events_pkgsize: 40000
+  root_folder: '/media/javi/JAVIS/datasets/dsec/interlaken_00_a/'
+  output_folder: '/media/javi/JAVIS/datasets/dsec/interlaken_00_a/'
+  images_folder: 'images/left/rectified'
+  disparity_events_folder: 'disparity/event'
+  disparity_images_folder: 'disparity/image'
+  img_ts_filename: 'images/timestamps.txt'
+  events_filename: 'events/left/events.h5'
+  imu_filename: 'imu_sync/left/imu.h5'
+  disparity_ts_filename: 'disparity/timestamps.txt'
+  cam_to_imu_filename: 'calibration/cam_to_imu.yaml'
+  cam_to_cam_filename: 'calibration/cam_to_cam.yaml'
+
