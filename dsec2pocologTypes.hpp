@@ -19,7 +19,8 @@ namespace dsec2pocolog
         std::string event_camera_idx; //index of the camera in the calib [0, 1, 2, 3]
         std::string rgb_camera_idx;  //index of the camare in the calib [0, 1, 2, 3]
 
-        unsigned int events_pkgsize;
+        unsigned int events_pkgsize; //number of events in event array message
+        bool resize_out_img; //true if resize im to event image size
 
         /** Path to folders, all path folders are relative to the root folder **/
         std::string root_folder; // path root folder to the dataset

@@ -379,7 +379,10 @@ void Task::convertData()
         cv::Mat img, orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
 
         /** Resize to the event image size to have the same **/
-        cv::resize(orig_img, img, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0);
+        if (this->config.resize_out_img)
+            cv::resize(orig_img, img, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0);
+        else
+            img = orig_img;
 
         /** Convert from cv mat to frame **/
         ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();
@@ -407,7 +410,10 @@ void Task::convertData()
         cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
         
         /** Resize to the event image size to have the same **/
-        cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
+        if (this->config.resize_out_img)
+            cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
+        else
+            disp = orig_disp;
 
         /** Convert from cv mat to frame **/
         ::base::samples::frame::Frame *disp_img_msg_ptr = this->disp_img_msg.write_access();
