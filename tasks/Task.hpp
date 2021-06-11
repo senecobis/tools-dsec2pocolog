@@ -212,7 +212,6 @@ namespace dsec2pocolog{
                 {
                     /** Left cameras **/
                     YAML::Node T = attributes["T_10"];
-                    std::cout<<"HERE"<<std::endl;
                     calib.Tij.at<double>(0,0) = T[0][0].as<double>();
                     calib.Tij.at<double>(0,1) = T[0][1].as<double>();
                     calib.Tij.at<double>(0,2) = T[0][2].as<double>();
