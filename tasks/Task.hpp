@@ -16,12 +16,13 @@ namespace dsec2pocolog{
     struct CameraCalib
     {
         cv::Mat K; // intrinsics
-        cv::Mat K_; //rectified K
+        cv::Mat Kr; //rectified K
         cv::Vec4d D; //distortion
-        cv::Mat Rect;// rect matrix
+        cv::Mat Rr;// rect matrix
         std::string distortion_model; //model
         size_t height, width; //image size
         cv::Mat Q; //disparity to depth as in https://docs.opencv.org/4.5.2/d9/d0c/group__calib3d.html#ga1bc1152bd57d63bc524204f21fde6e02
+        cv::Mat Tij; //Transformation matrix in DSEC can be T_10, T21, T32
     };
 
     struct Event
@@ -185,26 +186,79 @@ namespace dsec2pocolog{
                 /** Get  rectified intrinsics **/
                 event_cam = attributes["camRect" + cam_id];
                 cam_matrix = event_cam["camera_matrix"];
-                calib.K_ = cv::Mat_<double>::eye(3, 3);
-                calib.K_.at<double>(0,0) = cam_matrix[0].as<double>();
-                calib.K_.at<double>(0,2) = cam_matrix[2].as<double>();
-                calib.K_.at<double>(1,1) = cam_matrix[1].as<double>();
-                calib.K_.at<double>(1,2) = cam_matrix[3].as<double>();
+                calib.Kr = cv::Mat_<double>::eye(3, 3);
+                calib.Kr.at<double>(0,0) = cam_matrix[0].as<double>();
+                calib.Kr.at<double>(0,2) = cam_matrix[2].as<double>();
+                calib.Kr.at<double>(1,1) = cam_matrix[1].as<double>();
+                calib.Kr.at<double>(1,2) = cam_matrix[3].as<double>();
             };
  
             auto extrinsics = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes)
             {
                 YAML::Node rect_matrix = attributes["R_rect" + cam_id];
-                calib.Rect = cv::Mat_<double>::eye(3, 3);
-                calib.Rect.at<double>(0,0) = rect_matrix[0][0].as<double>();
-                calib.Rect.at<double>(0,1) = rect_matrix[0][1].as<double>();
-                calib.Rect.at<double>(0,2) = rect_matrix[0][2].as<double>();
-                calib.Rect.at<double>(1,0) = rect_matrix[1][0].as<double>();
-                calib.Rect.at<double>(1,1) = rect_matrix[1][1].as<double>();
-                calib.Rect.at<double>(1,2) = rect_matrix[1][2].as<double>();
-                calib.Rect.at<double>(2,0) = rect_matrix[2][0].as<double>();
-                calib.Rect.at<double>(2,1) = rect_matrix[2][1].as<double>();
-                calib.Rect.at<double>(2,2) = rect_matrix[2][2].as<double>();
+                calib.Rr = cv::Mat_<double>::eye(3, 3);
+                calib.Rr.at<double>(0,0) = rect_matrix[0][0].as<double>();
+                calib.Rr.at<double>(0,1) = rect_matrix[0][1].as<double>();
+                calib.Rr.at<double>(0,2) = rect_matrix[0][2].as<double>();
+                calib.Rr.at<double>(1,0) = rect_matrix[1][0].as<double>();
+                calib.Rr.at<double>(1,1) = rect_matrix[1][1].as<double>();
+                calib.Rr.at<double>(1,2) = rect_matrix[1][2].as<double>();
+                calib.Rr.at<double>(2,0) = rect_matrix[2][0].as<double>();
+                calib.Rr.at<double>(2,1) = rect_matrix[2][1].as<double>();
+                calib.Rr.at<double>(2,2) = rect_matrix[2][2].as<double>();
+
+                calib.Tij = cv::Mat_<double>::eye(4, 4);
+                if ((cam_id.compare("0") == 0) || (cam_id.compare("1") == 0)) 
+                {
+                    /** Left cameras **/
+                    YAML::Node T = attributes["T_10"];
+                    std::cout<<"HERE"<<std::endl;
+                    calib.Tij.at<double>(0,0) = T[0][0].as<double>();
+                    calib.Tij.at<double>(0,1) = T[0][1].as<double>();
+                    calib.Tij.at<double>(0,2) = T[0][2].as<double>();
+                    calib.Tij.at<double>(0,3) = T[0][3].as<double>();
+                    calib.Tij.at<double>(1,0) = T[1][0].as<double>();
+                    calib.Tij.at<double>(1,1) = T[1][1].as<double>();
+                    calib.Tij.at<double>(1,2) = T[1][2].as<double>();
+                    calib.Tij.at<double>(1,3) = T[1][3].as<double>();
+                    calib.Tij.at<double>(2,0) = T[2][0].as<double>();
+                    calib.Tij.at<double>(2,1) = T[2][1].as<double>();
+                    calib.Tij.at<double>(2,2) = T[2][2].as<double>();
+                    calib.Tij.at<double>(2,3) = T[2][3].as<double>();
+                    calib.Tij.at<double>(3,0) = T[3][0].as<double>();
+                    calib.Tij.at<double>(3,1) = T[3][1].as<double>();
+                    calib.Tij.at<double>(3,2) = T[3][2].as<double>();
+                    calib.Tij.at<double>(3,3) = T[3][3].as<double>();
+
+                    if (cam_id.compare("1") == 0)
+                        calib.Tij = calib.Tij.inv();
+
+                }
+                else if ((cam_id.compare("2") == 0) || (cam_id.compare("3") == 0)) 
+                {
+                    /** Left cameras **/
+                    YAML::Node T = attributes["T_32"];
+                    calib.Tij.at<double>(0,0) = T[0][0].as<double>();
+                    calib.Tij.at<double>(0,1) = T[0][1].as<double>();
+                    calib.Tij.at<double>(0,2) = T[0][2].as<double>();
+                    calib.Tij.at<double>(0,3) = T[0][3].as<double>();
+                    calib.Tij.at<double>(1,0) = T[1][0].as<double>();
+                    calib.Tij.at<double>(1,1) = T[1][1].as<double>();
+                    calib.Tij.at<double>(1,2) = T[1][2].as<double>();
+                    calib.Tij.at<double>(1,3) = T[1][3].as<double>();
+                    calib.Tij.at<double>(2,0) = T[2][0].as<double>();
+                    calib.Tij.at<double>(2,1) = T[2][1].as<double>();
+                    calib.Tij.at<double>(2,2) = T[2][2].as<double>();
+                    calib.Tij.at<double>(2,3) = T[2][3].as<double>();
+                    calib.Tij.at<double>(3,0) = T[3][0].as<double>();
+                    calib.Tij.at<double>(3,1) = T[3][1].as<double>();
+                    calib.Tij.at<double>(3,2) = T[3][2].as<double>();
+                    calib.Tij.at<double>(3,3) = T[3][3].as<double>();
+
+                    if (cam_id.compare("3") == 0)
+                        calib.Tij = calib.Tij.inv();
+                }
+
             };
             auto disparity = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes, std::string id)
             {

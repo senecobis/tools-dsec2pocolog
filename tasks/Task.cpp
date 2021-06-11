@@ -102,24 +102,28 @@ bool Task::startHook()
 
     /** Read the event camera calibration file **/
     fs::path calib_fname = fs::path(config.root_folder)/ fs::path(config.cam_to_cam_filename);
-    this->event_cam_calib = Task::readCameraInfo(calib_fname.string(),this->config.event_camera_idx );
+    this->event_cam_calib = Task::readCameraInfo(calib_fname.string(), this->config.event_camera_idx);
+    this->rgb_cam_calib = Task::readCameraInfo(calib_fname.string(), this->config.event_camera_idx);
+
     std::cout<<"COEFF:"<<this->event_cam_calib.D<<std::endl;
     std::cout<<"Model:"<<this->event_cam_calib.distortion_model<<std::endl;
     std::cout<<"Height:"<<this->event_cam_calib.height<<std::endl;
     std::cout<<"Width:"<<this->event_cam_calib.width<<std::endl;
     std::cout<<"K:"<<this->event_cam_calib.K<<std::endl;
-    std::cout<<"K_:"<<this->event_cam_calib.K_<<std::endl;
-    std::cout<<"Rect:"<<this->event_cam_calib.Rect<<std::endl;
-    std::cout<<"T:"<<this->event_cam_calib.Q<<std::endl;
-    this->rgb_cam_calib = Task::readCameraInfo(calib_fname.string(),this->config.rgb_camera_idx );
+    std::cout<<"Kr:"<<this->event_cam_calib.Kr<<std::endl;
+    std::cout<<"Rr:"<<this->event_cam_calib.Rr<<std::endl;
+    std::cout<<"Q:"<<this->event_cam_calib.Q<<std::endl;
+    std::cout<<"T:"<<this->event_cam_calib.Tij<<std::endl;
+
     std::cout<<"COEFF:"<<this->rgb_cam_calib.D<<std::endl;
     std::cout<<"Model:"<<this->rgb_cam_calib.distortion_model<<std::endl;
     std::cout<<"Height:"<<this->rgb_cam_calib.height<<std::endl;
     std::cout<<"Width:"<<this->rgb_cam_calib.width<<std::endl;
     std::cout<<"K:"<<this->rgb_cam_calib.K<<std::endl;
-    std::cout<<"K_:"<<this->rgb_cam_calib.K_<<std::endl;
-    std::cout<<"Rect:"<<this->rgb_cam_calib.Rect<<std::endl;
-    std::cout<<"T:"<<this->rgb_cam_calib.Q<<std::endl;
+    std::cout<<"Kr:"<<this->rgb_cam_calib.Kr<<std::endl;
+    std::cout<<"Rr:"<<this->rgb_cam_calib.Rr<<std::endl;
+    std::cout<<"Q:"<<this->rgb_cam_calib.Q<<std::endl;
+    std::cout<<"T:"<<this->rgb_cam_calib.Tij<<std::endl;
 
     /** Read images timestamps **/
     fs::path img_ts_fname = fs::path(config.root_folder)/ fs::path(config.img_ts_filename);
