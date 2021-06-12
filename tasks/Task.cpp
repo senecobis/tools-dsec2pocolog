@@ -70,7 +70,7 @@ bool Task::configureHook()
 
     char *version, *date;
     int r = register_blosc(&version, &date);
-    printf("Blosc version info: %s (%s)\n", version, date);
+    printf("Blosc version info: %s (%s) (%d)\n", version, date, r);
 
 
     this->config = _config.value();
@@ -98,28 +98,30 @@ bool Task::startHook()
         }
     }
 
-    std::cout<<"DSEC Dataset Starting Time: "<<this->starting_time.toString()<<std::endl;
+    std::cout<<"[DSEC DATASET] Starting Time: "<<this->starting_time.toString()<<std::endl;
 
     /** Read the event camera calibration file **/
     fs::path calib_fname = fs::path(config.root_folder)/ fs::path(config.cam_to_cam_filename);
     this->event_cam_calib = Task::readCameraInfo(calib_fname.string(), this->config.event_camera_idx);
-    this->rgb_cam_calib = Task::readCameraInfo(calib_fname.string(), this->config.event_camera_idx);
+    this->rgb_cam_calib = Task::readCameraInfo(calib_fname.string(), this->config.rgb_camera_idx);
 
-    std::cout<<"COEFF:"<<this->event_cam_calib.D<<std::endl;
+    std::cout<<"CALIB EVENT CAM:"<<this->config.event_camera_idx<<std::endl;
     std::cout<<"Model:"<<this->event_cam_calib.distortion_model<<std::endl;
     std::cout<<"Height:"<<this->event_cam_calib.height<<std::endl;
     std::cout<<"Width:"<<this->event_cam_calib.width<<std::endl;
     std::cout<<"K:"<<this->event_cam_calib.K<<std::endl;
+    std::cout<<"D:"<<this->event_cam_calib.D<<std::endl;
     std::cout<<"Kr:"<<this->event_cam_calib.Kr<<std::endl;
     std::cout<<"Rr:"<<this->event_cam_calib.Rr<<std::endl;
     std::cout<<"Q:"<<this->event_cam_calib.Q<<std::endl;
     std::cout<<"T:"<<this->event_cam_calib.Tij<<std::endl;
 
-    std::cout<<"COEFF:"<<this->rgb_cam_calib.D<<std::endl;
+    std::cout<<"CALIB RGB CAM:"<<this->config.rgb_camera_idx<<std::endl;
     std::cout<<"Model:"<<this->rgb_cam_calib.distortion_model<<std::endl;
     std::cout<<"Height:"<<this->rgb_cam_calib.height<<std::endl;
     std::cout<<"Width:"<<this->rgb_cam_calib.width<<std::endl;
     std::cout<<"K:"<<this->rgb_cam_calib.K<<std::endl;
+    std::cout<<"D:"<<this->rgb_cam_calib.D<<std::endl;
     std::cout<<"Kr:"<<this->rgb_cam_calib.Kr<<std::endl;
     std::cout<<"Rr:"<<this->rgb_cam_calib.Rr<<std::endl;
     std::cout<<"Q:"<<this->rgb_cam_calib.Q<<std::endl;
@@ -142,7 +144,7 @@ bool Task::startHook()
     }
     infile.close();
 
-    /** Read depthmaps timestamps **/
+    /** Read disparity images timestamps **/
     fs::path disp_ts_fname = fs::path(config.root_folder)/ fs::path(config.disparity_ts_filename);
     infile.open(disp_ts_fname.string());
     if (!infile)
@@ -304,158 +306,34 @@ void Task::updateHook()
 
 void Task::convertData()
 {
-    std::cout<<"t_size:"<<this->events.t.size()<<std::endl;
+    /*std::cout<<"t_size:"<<this->events.t.size()<<std::endl;
     std::cout<<"x_size:"<<this->events.x.size()<<std::endl;
     std::cout<<"y_size:"<<this->events.y.size()<<std::endl;
     std::cout<<"offset_size:"<<this->events.offset.size()<<std::endl;
     std::cout<<"imu:"<<this->imu.values.size()<<std::endl;
     std::cout<<"imu time:"<<this->imu.t.size()<<std::endl;
     std::cout << std::fixed;
-    std::cout << std::setprecision(6);
+    std::cout << std::setprecision(6);*/
     float t_offset = this->events.offset[0];
-    std::cout<<"events first time["<<this->events.t.size()<<"]: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
+    /*std::cout<<"events first time["<<this->events.t.size()<<"]: "<<this->events.t[0]+t_offset<<" last:"<<this->events.t[this->events.t.size()-1]+t_offset<<std::endl;
     std::cout<<"imu first time["<<this->imu.t.size()<<"]: "<<this->imu.t[0]<<" last:"<<this->imu.t[this->imu.t.size()-1]<<std::endl;
     std::cout<<"image first time["<<this->image_ts.size()<<"]: "<<this->image_ts[0]<<" last:"<<this->image_ts[this->image_ts.size()-1]<<std::endl;
     std::cout<<"disparity first time["<<this->disp_ts.size()<<"]: "<<this->disp_ts[0]<<" last:"<<this->disp_ts[this->disp_ts.size()-1]<<std::endl;
     std::cout<<"Number of RGB images: "<<this->img_fname.size()<<std::endl;
     std::cout<<"Number of disparity for RGB images: "<<this->disp_img_fname.size()<<std::endl;
-    std::cout<<"Number of disparity for event images: "<<this->disp_event_fname.size()<<std::endl;
-
-    /** Output port variables **/
-    ::base::samples::IMUSensors imu_msg;
-    ::base::samples::EventArray events_msg;
+    std::cout<<"Number of disparity for event images: "<<this->disp_event_fname.size()<<std::endl;*/
 
     /** Write the Events **/
-    for (size_t i=0; i<this->events.t.size(); ++i)
-    {
-        ::base::samples::Event ev(
-            this->events.x[i], this->events.y[i],
-            this->starting_time + ::base::Time::fromMicroseconds(this->events.t[i] + t_offset),
-            (uint8_t)this->events.p[i]);
-
-        if (events_msg.events.size() == 0)
-        {
-            events_msg.time = ev.ts;
-        }
-        events_msg.events.push_back(ev);
-
-        if (i%this->config.events_pkgsize == 0)
-        {
-            std::cout<<"events ["<<events_msg.events.size()<<"] at"<<events_msg.time.toString()<<std::endl;
-            events_msg.height = this->event_cam_calib.height;
-            events_msg.width = this->event_cam_calib.width;
-            this->_events.write(events_msg);
-            events_msg.events.clear();
-        }
-
-    }
+    this->writeEvents(t_offset);
 
     /** Write the IMU **/
-    ::base::Time first_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[0] + t_offset);
-    ::base::Time last_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[this->events.t.size()-1] + t_offset);
-    for (size_t i=0; i<this->imu.t.size(); ++i)
-    {
-        ::base::Vector6d &values = this->imu.values[i];
-        ::base::samples::IMUSensors imusamples;
-        imusamples.time = this->starting_time + ::base::Time::fromMicroseconds(this->imu.t[i]);
-        imusamples.acc << GRAVITY * values[0], GRAVITY * values[1], GRAVITY * values[2]; //[m/s^2]
-        imusamples.gyro << values[3], values[4], values[5]; //[rad/s]
-        if (imusamples.time >= first_ev_time)
-        {
-            std::cout<<"IMU at"<<imusamples.time.toString()<<std::endl;
-            this->_imu.write(imusamples);
-        }
-        if (imusamples.time > last_ev_time)
-            break;
-    }
+    this->writeIMU(t_offset);
 
     /** Write the images **/
-    auto it_img =this->img_fname.begin();
-    auto it_ts =this->image_ts.begin();
-    std::cout<<"Writing images... ";
-    while(it_img != this->img_fname.end() && it_ts != this->image_ts.end())
-    {
-        /** Read the image file **/
-        cv::Mat img, orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
-
-        /** Resize to the event image size to have the same **/
-        if (this->config.resize_out_img)
-            cv::resize(orig_img, img, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0);
-        else
-            img = orig_img;
-
-        /** Convert from cv mat to frame **/
-        ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();
-        img_msg_ptr->image.clear();
-        frame_helper::FrameHelper::copyMatToFrame(img, *img_msg_ptr);
-
-        /** Write into the port **/
-        img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
-        img_msg_ptr->received_time = img_msg_ptr->time;
-        this->img_msg.reset(img_msg_ptr);
-        _frame.write(this->img_msg);
-
-        ++it_img;
-        ++it_ts;
-    }
-    std::cout<<"[DONE]"<<std::endl;
-    
-    /** Write the disparity at RGB camera frame **/
-    auto it_disp =this->disp_img_fname.begin();
-    it_ts =this->disp_ts.begin();
-    std::cout<<"Writing disparity in images...";
-    while(it_disp != this->disp_img_fname.end() && it_ts != this->disp_ts.end())
-    {
-        /** Read the disp image file **/
-        cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
-        
-        /** Resize to the event image size to have the same **/
-        if (this->config.resize_out_img)
-            cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
-        else
-            disp = orig_disp;
-
-        /** Convert from cv mat to frame **/
-        ::base::samples::frame::Frame *disp_img_msg_ptr = this->disp_img_msg.write_access();
-        disp_img_msg_ptr->image.clear();
-        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_img_msg_ptr);
-
-        /** Write into the port **/
-        disp_img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
-        disp_img_msg_ptr->received_time = disp_img_msg_ptr->time;
-        this->disp_img_msg.reset(disp_img_msg_ptr);
-        _disp_img.write(this->disp_img_msg);
-
-        ++it_disp;
-        ++it_ts;
-    }
-    std::cout<<"[DONE]"<<std::endl;
-
+    this->writeRGB();
+   
     /** Write the disparity at event camera frame **/
-    it_disp =this->disp_event_fname.begin();
-    it_ts =this->disp_ts.begin();
-    std::cout<<"Writing disparity in events...";
-    while(it_disp != this->disp_event_fname.end() && it_ts != this->disp_ts.end())
-    {
-        /** Read the disp image file **/
-        cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
-
-        /** Convert from cv mat to frame **/
-        ::base::samples::frame::Frame *disp_event_msg_ptr = this->disp_event_msg.write_access();
-        disp_event_msg_ptr->image.clear();
-        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_event_msg_ptr);
-
-        /** Write into the port **/
-        disp_event_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
-        disp_event_msg_ptr->received_time = disp_event_msg_ptr->time;
-        this->disp_event_msg.reset(disp_event_msg_ptr);
-        _disp_events.write(this->disp_event_msg);
-
-        ++it_disp;
-        ++it_ts;
-    }
-    std::cout<<"[DONE]"<<std::endl;
- 
+    this->writeDisparityEvent();
 }
 
 void Task::errorHook()
@@ -533,4 +411,183 @@ void Task::readH5Dataset(std::string fname, std::string dataset, std::vector<dou
 
     // close the HDF5 file
     file.close();
+}
+
+void Task::writeEvents(float &t_offset)
+{
+    /** Write the Events **/
+    ::base::samples::EventArray events_msg;
+    std::cout<<"Writing Events... ";
+    for (size_t i=0; i<this->events.t.size(); ++i)
+    {
+        ::base::samples::Event ev(
+            this->events.x[i], this->events.y[i],
+            this->starting_time + ::base::Time::fromMicroseconds(this->events.t[i] + t_offset),
+            (uint8_t)this->events.p[i]);
+
+        if (events_msg.events.size() == 0)
+        {
+            events_msg.time = ev.ts;
+        }
+        events_msg.events.push_back(ev);
+
+        if (i%this->config.events_pkgsize == 0)
+        {
+            //std::cout<<"events ["<<events_msg.events.size()<<"] at"<<events_msg.time.toString()<<std::endl;
+            std::cout<<".";
+            events_msg.height = this->event_cam_calib.height;
+            events_msg.width = this->event_cam_calib.width;
+            this->_events.write(events_msg);
+            events_msg.events.clear();
+        }
+
+    }
+    std::cout<<"[DONE]"<<std::endl;
+}
+
+void Task::writeIMU(float &t_offset)
+{
+    ::base::samples::IMUSensors imu_msg;
+    ::base::Time first_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[0] + t_offset);
+    ::base::Time last_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[this->events.t.size()-1] + t_offset);
+    std::cout<<"Writing IMU... ";
+    for (size_t i=0; i<this->imu.t.size(); ++i)
+    {
+        ::base::Vector6d &values = this->imu.values[i];
+        ::base::samples::IMUSensors imusamples;
+        imusamples.time = this->starting_time + ::base::Time::fromMicroseconds(this->imu.t[i]);
+        imusamples.acc << GRAVITY * values[0], GRAVITY * values[1], GRAVITY * values[2]; //[m/s^2]
+        imusamples.gyro << values[3], values[4], values[5]; //[rad/s]
+        if (imusamples.time >= first_ev_time)
+        {
+            //std::cout<<"IMU at"<<imusamples.time.toString()<<std::endl;
+            std::cout<<".";
+            this->_imu.write(imusamples);
+        }
+        if (imusamples.time > last_ev_time)
+            break;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+}
+
+void Task::writeRGB()
+{
+    /** Compute the projection matrix for the backward warping **/
+    cv::Mat R  = this->event_cam_calib.Tij(cv::Rect(0,0,3,3)).clone();
+    cv::Mat P = this->rgb_cam_calib.Kr * this->rgb_cam_calib.Rr * R * this->event_cam_calib.Rr.t() * this->event_cam_calib.Kr.inv();
+
+    /** Write the images **/
+    auto it_img =this->img_fname.begin();
+    auto it_ts =this->image_ts.begin();
+    std::cout<<"Writing images... ";
+    while(it_img != this->img_fname.end() && it_ts != this->image_ts.end())
+    {
+        /** Read the image file **/
+        cv::Mat orig_img = cv::imread(*it_img, cv::IMREAD_COLOR);
+
+        /** Project the image in the event camera frame **/
+        cv::Mat img = this->RGBToEventFrame(orig_img, P, this->event_cam_calib.height, this->event_cam_calib.width);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();
+        img_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(img, *img_msg_ptr);
+
+        /** Write into the port **/
+        img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        img_msg_ptr->received_time = img_msg_ptr->time;
+        this->img_msg.reset(img_msg_ptr);
+        _frame.write(this->img_msg);
+
+        ++it_img;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+}
+
+void Task::writeDisparityRGB()
+{
+    /** Write the disparity at RGB camera frame **/
+    auto it_disp =this->disp_img_fname.begin();
+    auto it_ts =this->disp_ts.begin();
+    std::cout<<"Writing disparity in images...";
+    while(it_disp != this->disp_img_fname.end() && it_ts != this->disp_ts.end())
+    {
+        /** Read the disp image file **/
+        cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+        
+        /** Resize to the event image size to have the same **/
+        cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *disp_img_msg_ptr = this->disp_img_msg.write_access();
+        disp_img_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_img_msg_ptr);
+
+        /** Write into the port **/
+        disp_img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        disp_img_msg_ptr->received_time = disp_img_msg_ptr->time;
+        this->disp_img_msg.reset(disp_img_msg_ptr);
+        //_disp_img.write(this->disp_img_msg);
+
+        ++it_disp;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+
+
+}
+
+void Task::writeDisparityEvent()
+{
+    /** Write the disparity at event camera frame **/
+    auto it_disp =this->disp_event_fname.begin();
+    auto it_ts =this->disp_ts.begin();
+    std::cout<<"Writing disparity in events...";
+    while(it_disp != this->disp_event_fname.end() && it_ts != this->disp_ts.end())
+    {
+        /** Read the disp image file **/
+        cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+
+        /** Convert from cv mat to frame **/
+        ::base::samples::frame::Frame *disp_event_msg_ptr = this->disp_event_msg.write_access();
+        disp_event_msg_ptr->image.clear();
+        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_event_msg_ptr);
+
+        /** Write into the port **/
+        disp_event_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        disp_event_msg_ptr->received_time = disp_event_msg_ptr->time;
+        this->disp_event_msg.reset(disp_event_msg_ptr);
+        _disparity.write(this->disp_event_msg);
+
+        ++it_disp;
+        ++it_ts;
+    }
+    std::cout<<"[DONE]"<<std::endl;
+}
+
+cv::Mat Task::RGBToEventFrame(cv::Mat &frame,  cv::Mat &P, int &height, int &width)
+{
+    cv::Mat out_img (cv::Size(width, height), CV_8UC3, cv::Scalar(0, 0, 0));
+    std::cout<<"Out image "<<out_img.size()<<" TYPE: "<<type2str(out_img.type())<<std::endl;
+
+    /** RGB image in event camera (backward warping ) **/
+    cv::Mat map (height, width, CV_32FC2); //event frame size -> rgb camera size
+    std::cout<<"Original Image size: "<<frame.size()<<std::endl;
+    for (int y=0; y<height; ++y)
+    {
+        for(int x=0; x<width; ++x)
+        {
+            cv::Point3d u_hom(x, y, 1.0);
+            cv::Mat_<double> u_hat = P * cv::Mat(u_hom, false);
+            //cv::Vec3b value = frame.at<cv::Vec3b>(floor(u_hom.y), floor(u_hom.x));
+            //out_img.at<cv::Vec3b>(cv::Point(x, y)) = value;
+            map.at<cv::Point2f>(y, x) = cv::Point2f(u_hat(0, 0), u_hat(0, 1));
+        }
+    }
+    //std::cout<<"Map size: "<<map.size()<<std::endl;
+    cv::remap(frame, out_img, map, cv::Mat(), cv::INTER_LINEAR);
+    std::cout<<"Out image "<<out_img.size()<<" TYPE: "<<type2str(out_img.type())<<std::endl;
+
+    return out_img;
 }

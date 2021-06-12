@@ -46,12 +46,9 @@ task_context "Task" do
         doc 'array of events'
 
     output_port('frame', ro_ptr('base::samples::frame::Frame')).
-        doc 'RGB Image frame'
+        doc 'RGB Image frame at the event camera'
 
-    output_port('disp_img', ro_ptr('base::samples::frame::Frame')).
-        doc 'Disparity in the RGB camera'
-
-    output_port('disp_events', ro_ptr('base::samples::frame::Frame')).
+    output_port('disparity', ro_ptr('base::samples::frame::Frame')).
         doc 'Disparity in the event camera'
 
     fd_driven
@@ -69,7 +66,6 @@ task_context "Viz" do
         doc "Color encoding: RED_BLUE, GREEN_RED, BLUE_BLACK"
     property "calib_file", "std::string"
     property "event_camera_idx", "std::string"
-    property "rgb_camera_idx", "std::string"
 
     #******************************
     #******* Input Ports *********

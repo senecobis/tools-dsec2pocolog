@@ -34,10 +34,9 @@ namespace dsec2pocolog{
 
         /** Calibration Files **/
         CameraCalib event_cam_calib;
-        CameraCalib rgb_cam_calib;
 
         /** variables **/
-        cv::Mat frame, P;
+        cv::Mat frame;
 
         /** Input ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> frame_ptr;
@@ -45,9 +44,7 @@ namespace dsec2pocolog{
         /** Output ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
  
-        cv::Mat createFrame (cv::Mat &frame,  unsigned int &height, unsigned int &width,  std::vector<cv::Point2f> &coord, std::vector<uint8_t> &p);
-
-        void eventsToRGBCamera (const cv::Mat &P, const std::vector<cv::Point2f> &u, std::vector<cv::Point2f> &u_p);
+        cv::Mat createFrame (cv::Mat &frame, std::vector<cv::Point2f> &coord, std::vector<uint8_t> &p);
 
     public:
         /** TaskContext constructor for Viz

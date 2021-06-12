@@ -22,7 +22,7 @@ namespace dsec2pocolog{
         cv::Vec4d D; //distortion
         cv::Mat Rr;// rect matrix
         std::string distortion_model; //model
-        size_t height, width; //image size
+        int height, width; //image size
         cv::Mat Q; //disparity to depth as in https://docs.opencv.org/4.5.2/d9/d0c/group__calib3d.html#ga1bc1152bd57d63bc524204f21fde6e02
         cv::Mat Tij; //Transformation matrix in DSEC can be T_10, T21, T32
     };
@@ -92,6 +92,20 @@ namespace dsec2pocolog{
 
         void convertData();
 
+        void writeEvents(float &t_offset);
+
+        void writeIMU(float &t_offset);
+
+        void writeRGB();
+
+        void writeDisparityRGB();
+
+        void writeDisparityEvent();
+
+        cv::Mat RGBToEventFrame(cv::Mat &frame,  cv::Mat &P, int &height, int &width);
+
+        void readH5Dataset(std::string fname, std::string dataset, std::vector<double> &data);
+
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
@@ -160,8 +174,6 @@ namespace dsec2pocolog{
          * before calling start() again.
          */
         void cleanupHook();
-
-        void readH5Dataset(std::string fname, std::string dataset, std::vector<double> &data);
 
         /** DSEC use ruamel python stupid library to wirte the yaml **/
         static CameraCalib readCameraInfo(std::string calib_fname, std::string cam_id)
@@ -373,6 +385,30 @@ namespace dsec2pocolog{
             }
             return;
         }
+
+        static std::string type2str(int type)
+        {
+            std::string r;
+
+            uchar depth = type & CV_MAT_DEPTH_MASK;
+            uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+            switch ( depth ) {
+                case CV_8U:  r = "8U"; break;
+                case CV_8S:  r = "8S"; break;
+                case CV_16U: r = "16U"; break;
+                case CV_16S: r = "16S"; break;
+                case CV_32S: r = "32S"; break;
+                case CV_32F: r = "32F"; break;
+                case CV_64F: r = "64F"; break;
+                default:     r = "User"; break;
+            }
+
+            r += "C";
+            r += (chans+'0');
+
+            return r;
+        };
     };
 }
 
