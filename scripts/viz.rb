@@ -40,7 +40,8 @@ Orocos::Process.run 'dsec2pocolog::Viz' => 'dsecviz' do
 
     # open the log replay widget
     control = Vizkit.control log_replay
-    control.speed = 1 #4
+    control.speed = 1.0 #4
+    #control.auto_replay
 
     Vizkit.exec
 
