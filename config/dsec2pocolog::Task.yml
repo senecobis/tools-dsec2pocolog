@@ -4,7 +4,6 @@ config:
   event_camera_idx: '0'
   rgb_camera_idx: '1'
   events_pkgsize: 40000
-  resize_out_img: false,
   root_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
   output_folder: '/media/javi/JAVIS/datasets/dsec/thun_01_a/'
   images_folder: 'images/left/rectified'
@@ -23,7 +22,6 @@ config:
   event_camera_idx: '0'
   rgb_camera_idx: '1'
   events_pkgsize: 40000
-  resize_out_img: false,
   root_folder: '/media/javi/JAVIS/datasets/dsec/interlaken_00_a/'
   output_folder: '/media/javi/JAVIS/datasets/dsec/interlaken_00_a/'
   images_folder: 'images/left/rectified'
