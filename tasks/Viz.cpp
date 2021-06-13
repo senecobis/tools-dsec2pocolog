@@ -157,7 +157,7 @@ cv::Mat Viz::createFrame (cv::Mat &frame, std::vector<cv::Point2f> &coord, std::
         return frame;
 
     /** Output image **/    
-    cv::Mat out_img  = frame;
+    cv::Mat out_img; frame.copyTo(out_img);
 
     /** Event colors **/
     cv::Vec3b color_positive, color_negative;
