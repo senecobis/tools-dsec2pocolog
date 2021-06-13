@@ -9,6 +9,7 @@
 #include <opencv2/core/mat.hpp>
 
 #include <base/samples/Frame.hpp>
+#include <base/samples/DistanceImage.hpp>
 #include "dsec2pocolog/TaskBase.hpp"
 
 #include <cmath>
@@ -82,6 +83,7 @@ namespace dsec2pocolog{
         std::vector<std::string> disp_img_fname;
         std::vector<std::string> disp_event_fname;
 
+        /** Calibration information **/
         CameraCalib event_cam_calib;
         CameraCalib rgb_cam_calib;
 
@@ -89,6 +91,7 @@ namespace dsec2pocolog{
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_img_msg;
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> disp_event_msg;
+        RTT::extras::ReadOnlyPointer<base::samples::DistanceImage> depth_msg;
 
         void convertData();
 
@@ -100,7 +103,9 @@ namespace dsec2pocolog{
 
         void writeDisparityRGB();
 
-        void writeDisparityEvent();
+        void writeDepthEvent();
+
+        base::samples::DistanceImage disparityToDepth(cv::Mat &disp);
 
         cv::Mat RGBToEventFrame(cv::Mat &frame,  cv::Mat &P, int &height, int &width);
 
@@ -277,24 +282,24 @@ namespace dsec2pocolog{
             };
             auto disparity = [cam_id, &calib] (const std::string &key,  YAML::Node &attributes, std::string id)
             {
-                calib.Q = cv::Mat_<double>::eye(4, 4);
+                calib.Q = cv::Mat_<float>::eye(4, 4);
                 YAML::Node M = attributes[id];
-                calib.Q.at<double>(0,0) = M[0][0].as<double>();
-                calib.Q.at<double>(0,1) = M[0][1].as<double>();
-                calib.Q.at<double>(0,2) = M[0][2].as<double>();
-                calib.Q.at<double>(0,3) = M[0][3].as<double>();
-                calib.Q.at<double>(1,0) = M[1][0].as<double>();
-                calib.Q.at<double>(1,1) = M[1][1].as<double>();
-                calib.Q.at<double>(1,2) = M[1][2].as<double>();
-                calib.Q.at<double>(1,3) = M[1][3].as<double>();
-                calib.Q.at<double>(2,0) = M[2][0].as<double>();
-                calib.Q.at<double>(2,1) = M[2][1].as<double>();
-                calib.Q.at<double>(2,2) = M[2][2].as<double>();
-                calib.Q.at<double>(2,3) = M[2][3].as<double>();
-                calib.Q.at<double>(3,0) = M[3][0].as<double>();
-                calib.Q.at<double>(3,1) = M[3][1].as<double>();
-                calib.Q.at<double>(3,2) = M[3][2].as<double>();
-                calib.Q.at<double>(3,3) = M[3][3].as<double>();
+                calib.Q.at<float>(0,0) = M[0][0].as<float>();
+                calib.Q.at<float>(0,1) = M[0][1].as<float>();
+                calib.Q.at<float>(0,2) = M[0][2].as<float>();
+                calib.Q.at<float>(0,3) = M[0][3].as<float>();
+                calib.Q.at<float>(1,0) = M[1][0].as<float>();
+                calib.Q.at<float>(1,1) = M[1][1].as<float>();
+                calib.Q.at<float>(1,2) = M[1][2].as<float>();
+                calib.Q.at<float>(1,3) = M[1][3].as<float>();
+                calib.Q.at<float>(2,0) = M[2][0].as<float>();
+                calib.Q.at<float>(2,1) = M[2][1].as<float>();
+                calib.Q.at<float>(2,2) = M[2][2].as<float>();
+                calib.Q.at<float>(2,3) = M[2][3].as<float>();
+                calib.Q.at<float>(3,0) = M[3][0].as<float>();
+                calib.Q.at<float>(3,1) = M[3][1].as<float>();
+                calib.Q.at<float>(3,2) = M[3][2].as<float>();
+                calib.Q.at<float>(3,3) = M[3][3].as<float>();
             };
 
             YAML::Node calibmap = YAML::LoadFile(calib_fname);

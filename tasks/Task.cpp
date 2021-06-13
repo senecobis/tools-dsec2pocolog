@@ -68,6 +68,11 @@ bool Task::configureHook()
     this->disp_event_msg.reset(disp_event);
     disp_event = nullptr;
 
+    /** Set the depth map **/
+    ::base::samples::DistanceImage *depth = new ::base::samples::DistanceImage();
+    this->depth_msg.reset(depth);
+    depth = nullptr;
+
     char *version, *date;
     int r = register_blosc(&version, &date);
     printf("Blosc version info: %s (%s) (%d)\n", version, date, r);
@@ -333,7 +338,7 @@ void Task::convertData()
     this->writeRGB();
    
     /** Write the disparity at event camera frame **/
-    this->writeDisparityEvent();
+    this->writeDepthEvent();
 }
 
 void Task::errorHook()
@@ -538,7 +543,7 @@ void Task::writeDisparityRGB()
 
 }
 
-void Task::writeDisparityEvent()
+void Task::writeDepthEvent()
 {
     /** Write the disparity at event camera frame **/
     auto it_disp =this->disp_event_fname.begin();
@@ -549,21 +554,70 @@ void Task::writeDisparityEvent()
         /** Read the disp image file **/
         cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
 
-        /** Convert from cv mat to frame **/
-        ::base::samples::frame::Frame *disp_event_msg_ptr = this->disp_event_msg.write_access();
-        disp_event_msg_ptr->image.clear();
-        frame_helper::FrameHelper::copyMatToFrame(disp, *disp_event_msg_ptr);
+        /** Convert disparity to Depth **/
+        base::samples::DistanceImage depthmap = this->disparityToDepth(disp);
+
+        /** Set intrinsics **/
+        ::base::samples::DistanceImage *depth_msg_ptr = this->depth_msg.write_access();
+        depth_msg_ptr->data.clear();
+        depth_msg_ptr->data  = depthmap.data;
+        depth_msg_ptr->height  = depthmap.height;
+        depth_msg_ptr->width  = depthmap.width;
+        depth_msg_ptr->setIntrinsic(this->event_cam_calib.Kr.at<double>(0,0),
+                            this->event_cam_calib.Kr.at<double>(1,1),
+                            this->event_cam_calib.Kr.at<double>(0,2),
+                            this->event_cam_calib.Kr.at<double>(1,2));
+
 
         /** Write into the port **/
-        disp_event_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
-        disp_event_msg_ptr->received_time = disp_event_msg_ptr->time;
-        this->disp_event_msg.reset(disp_event_msg_ptr);
-        _disparity.write(this->disp_event_msg);
+        depth_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
+        this->depth_msg.reset(depth_msg_ptr);
+        _depthmap.write(this->depth_msg);
 
         ++it_disp;
         ++it_ts;
     }
     std::cout<<"[DONE]"<<std::endl;
+}
+
+base::samples::DistanceImage Task::disparityToDepth(cv::Mat &disp)
+{
+    /** The output distance image **/
+    cv::Size s = disp.size();
+    base::samples::DistanceImage depthmap(s.width, s.height);
+
+    std::cout<<"DEPTHMAP ["<<depthmap.height<<"x"<<depthmap.width<<"]"<<std::endl;
+    std::cout<<"DISP "<<disp.size()<<" "<<type2str(disp.type())<<std::endl;
+
+    /** Convert disp to 32 bits **/
+    cv::Mat disp_32F;
+    disp.convertTo(disp_32F, CV_32F, 1./16);
+    std::cout<<"DISP_32F "<<disp_32F.size()<<" "<<type2str(disp_32F.type())<<std::endl;
+
+    /** Disp to depth **/
+    // See here https://stackoverflow.com/questions/22418846/reprojectimageto3d-in-opencv
+    cv::Mat_<float> vec_tmp(4,1);
+    for(int y=0; y<disp_32F.rows; ++y)
+    {
+        for(int x=0; x<disp_32F.cols; ++x)
+        {
+            vec_tmp(0)=x; vec_tmp(1)=y; vec_tmp(2)=disp_32F.at<float>(y,x); vec_tmp(3)=1;
+            vec_tmp = this->event_cam_calib.Q*vec_tmp;
+            vec_tmp /= vec_tmp(3);
+            if (vec_tmp(2) == base::infinity<float>())
+                depthmap.data.push_back(base::NaN<float>());
+            else
+                depthmap.data.push_back(vec_tmp(2));
+        }
+    }
+
+    /** Using OpenCV function **/
+    //cv::Mat depth_img;
+    //cv::reprojectImageTo3D(disp_32F, depth_img, this->event_cam_calib.Q);
+    //std::vector<cv::Mat> channels(depth_img.channels());
+    //cv::split(depth_img, channels);
+
+    return depthmap;
 }
 
 cv::Mat Task::RGBToEventFrame(cv::Mat &frame,  cv::Mat &P, int &height, int &width)
