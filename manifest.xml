@@ -13,4 +13,5 @@
   <rosdep name="boost" />
   <rosdep name="hdf5" />
   <rosdep name="yaml-cpp" />
+  <tags> stable </tags>
 </package>
