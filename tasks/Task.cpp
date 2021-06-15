@@ -447,12 +447,21 @@ void Task::writeEvents(float &t_offset)
         }
 
     }
+
+    /** Write the last event array **/
+    if (events_msg.events.size() > 0)
+    {
+        std::cout<<"last ["<<events_msg.events.size()<<"] ";
+        events_msg.height = this->event_cam_calib.height;
+        events_msg.width = this->event_cam_calib.width;
+        this->_events.write(events_msg);
+    }
+ 
     std::cout<<"[DONE]"<<std::endl;
 }
 
 void Task::writeIMU(float &t_offset)
 {
-    ::base::samples::IMUSensors imu_msg;
     ::base::Time first_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[0] + t_offset);
     ::base::Time last_ev_time = this->starting_time + ::base::Time::fromMicroseconds(this->events.t[this->events.t.size()-1] + t_offset);
     std::cout<<"Writing IMU... ";
