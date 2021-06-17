@@ -426,8 +426,8 @@ void Task::writeEvents(float &t_offset)
     for (size_t i=0; i<this->events.t.size(); ++i)
     {
         ::base::samples::Event ev(
-            this->events.x[i], this->events.y[i],
-            this->starting_time + ::base::Time::fromMicroseconds(this->events.t[i] + t_offset),
+            static_cast<uint16_t>(this->events.x[i]), static_cast<uint16_t>(this->events.y[i]),
+            this->starting_time + ::base::Time::fromMicroseconds(static_cast<int64_t>(this->events.t[i] + t_offset)),
             (uint8_t)this->events.p[i]);
 
         if (events_msg.events.size() == 0)
