@@ -600,32 +600,47 @@ base::samples::DistanceImage Task::disparityToDepth(cv::Mat &disp)
 
     /** Convert disp to 32 bits **/
     cv::Mat disp_32F;
-    disp.convertTo(disp_32F, CV_32F, 1./16);
+    disp.convertTo(disp_32F, CV_32F, 1./16.0);
     std::cout<<"DISP_32F "<<disp_32F.size()<<" "<<type2str(disp_32F.type())<<std::endl;
 
     /** Disp to depth **/
     // See here https://stackoverflow.com/questions/22418846/reprojectimageto3d-in-opencv
-    cv::Mat_<float> vec_tmp(4,1);
-    for(int y=0; y<disp_32F.rows; ++y)
+    //cv::Mat_<float> vec_tmp(4,1);
+    //for(int y=0; y<disp_32F.rows; ++y)
+    //{
+    //    for(int x=0; x<disp_32F.cols; ++x)
+    //    {
+    //        vec_tmp(0)=x; vec_tmp(1)=y; vec_tmp(2)=disp_32F.at<float>(y,x); vec_tmp(3)=1;
+    //        vec_tmp = this->event_cam_calib.Q*vec_tmp;
+    //        vec_tmp /= vec_tmp(3);
+    //        if (vec_tmp(2) == base::infinity<float>())
+    //            depthmap.data.push_back(base::NaN<float>());
+    //        else
+    //            depthmap.data.push_back(vec_tmp(2));
+    //    }
+    //}
+
+    /** Using OpenCV function **/
+    cv::Mat depth_img;
+    float max, min; max=0.0; min=base::infinity<float>();
+    cv::reprojectImageTo3D(disp_32F, depth_img, this->event_cam_calib.Q);
+    for (int y=0; y<depth_img.rows; ++y)
     {
-        for(int x=0; x<disp_32F.cols; ++x)
+        for (int x=0; x<depth_img.cols; ++x)
         {
-            vec_tmp(0)=x; vec_tmp(1)=y; vec_tmp(2)=disp_32F.at<float>(y,x); vec_tmp(3)=1;
-            vec_tmp = this->event_cam_calib.Q*vec_tmp;
-            vec_tmp /= vec_tmp(3);
-            if (vec_tmp(2) == base::infinity<float>())
+            cv::Vec3f &point = depth_img.at<cv::Vec3f>(y,x);
+            if (point[2] == base::infinity<float>())
                 depthmap.data.push_back(base::NaN<float>());
             else
-                depthmap.data.push_back(vec_tmp(2));
+            {
+                depthmap.data.push_back(point[2]);
+                max = (point[2] > max)? point[2] : max;
+                min = (point[2] < min)? point[2] : min;
+            }
         }
     }
 
-    /** Using OpenCV function **/
-    //cv::Mat depth_img;
-    //cv::reprojectImageTo3D(disp_32F, depth_img, this->event_cam_calib.Q);
-    //std::vector<cv::Mat> channels(depth_img.channels());
-    //cv::split(depth_img, channels);
-
+    std::cout<<"max depth: "<<max<<" min depth: "<<min<<std::endl;
     return depthmap;
 }
 

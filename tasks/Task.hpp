@@ -320,7 +320,7 @@ namespace dsec2pocolog{
                 }
                 else if (key.compare("disparity_to_depth") == 0)
                 {
-                    /** Read the disprity to depth info **/
+                    /** Read the disparity to depth info **/
                     if(cam_id.compare("0") == 0)
                         disparity(key, attributes, "cams_03");
                     else
