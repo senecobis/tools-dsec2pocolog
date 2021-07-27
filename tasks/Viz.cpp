@@ -113,7 +113,7 @@ void Viz::updateHook()
         std::cout<<"coord: " << coord[0] <<" coord_rect: "<< coord_rect[0] <<std::endl;
 
         /** Create the Frame **/
-        cv::Mat img = this->createFrame(this->frame, coord, p);
+        cv::Mat img = this->createFrame(this->frame, coord_rect, p);
 
         /** Convert from cv mat to frame **/
         ::base::samples::frame::Frame *img_msg_ptr = this->img_msg.write_access();

@@ -442,7 +442,9 @@ void Task::writeEvents(float &t_offset)
             std::cout<<".";
             events_msg.height = this->event_cam_calib.height;
             events_msg.width = this->event_cam_calib.width;
-            this->_events.write(events_msg);
+            RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+            while (status != RTT::WriteStatus::WriteSuccess)
+                status = this->_events.write(events_msg);
             events_msg.events.clear();
         }
 
@@ -454,7 +456,9 @@ void Task::writeEvents(float &t_offset)
         std::cout<<"last ["<<events_msg.events.size()<<"] ";
         events_msg.height = this->event_cam_calib.height;
         events_msg.width = this->event_cam_calib.width;
-        this->_events.write(events_msg);
+        RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+        while (status != RTT::WriteStatus::WriteSuccess)
+            status = this->_events.write(events_msg);
     }
  
     std::cout<<"[DONE]"<<std::endl;
@@ -476,7 +480,9 @@ void Task::writeIMU(float &t_offset)
         {
             //std::cout<<"IMU at"<<imusamples.time.toString()<<std::endl;
             std::cout<<".";
-            this->_imu.write(imusamples);
+            RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+            while (status != RTT::WriteStatus::WriteSuccess)
+                status = this->_imu.write(imusamples);
         }
         if (imusamples.time > last_ev_time)
             break;
@@ -511,7 +517,9 @@ void Task::writeRGB()
         img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
         img_msg_ptr->received_time = img_msg_ptr->time;
         this->img_msg.reset(img_msg_ptr);
-        _frame.write(this->img_msg);
+        RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+        while (status != RTT::WriteStatus::WriteSuccess)
+            status = _frame.write(this->img_msg);
 
         ++it_img;
         ++it_ts;
@@ -542,7 +550,9 @@ void Task::writeDisparityRGB()
         disp_img_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
         disp_img_msg_ptr->received_time = disp_img_msg_ptr->time;
         this->disp_img_msg.reset(disp_img_msg_ptr);
-        //_disp_img.write(this->disp_img_msg);
+        //RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+        //while (status != RTT::WriteStatus::WriteSuccess)
+        //  status = _disp_img.write(this->disp_img_msg);
 
         ++it_disp;
         ++it_ts;
@@ -581,7 +591,9 @@ void Task::writeDepthEvent()
         /** Write into the port **/
         depth_msg_ptr->time =  this->starting_time + ::base::Time::fromMicroseconds(*it_ts);
         this->depth_msg.reset(depth_msg_ptr);
-        _depthmap.write(this->depth_msg);
+        RTT::WriteStatus status = RTT::WriteStatus::WriteFailure;
+        while (status != RTT::WriteStatus::WriteSuccess)
+            status = _depthmap.write(this->depth_msg);
 
         ++it_disp;
         ++it_ts;
