@@ -536,9 +536,9 @@ void Task::writeDisparityRGB()
     while(it_disp != this->disp_img_fname.end() && it_ts != this->disp_ts.end())
     {
         /** Read the disp image file **/
-        cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+        cv::Mat disp, orig_disp = cv::imread(*it_disp, cv::IMREAD_ANYDEPTH);
         
-        /** Resize to the event image size to have the same **/
+        /** Resize to the event image size to have the same. TO-DO: Resize change the depth **/
         cv::resize(orig_disp, disp, cv::Size(this->event_cam_calib.width, this->event_cam_calib.height), 0, 0, cv::INTER_NEAREST);
 
         /** Convert from cv mat to frame **/
@@ -571,7 +571,7 @@ void Task::writeDepthEvent()
     while(it_disp != this->disp_event_fname.end() && it_ts != this->disp_ts.end())
     {
         /** Read the disp image file **/
-        cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
+        cv::Mat disp = cv::imread(*it_disp, cv::IMREAD_ANYDEPTH);
 
         /** Convert disparity to Depth **/
         base::samples::DistanceImage depthmap = this->disparityToDepth(disp);
@@ -607,50 +607,62 @@ base::samples::DistanceImage Task::disparityToDepth(cv::Mat &disp)
     cv::Size s = disp.size();
     base::samples::DistanceImage depthmap(s.width, s.height);
 
-    std::cout<<"DEPTHMAP ["<<depthmap.height<<"x"<<depthmap.width<<"]"<<std::endl;
+    std::cout<<"DEPTHMAP ["<<depthmap.height<<" x "<<depthmap.width<<"]"<<std::endl;
     std::cout<<"DISP "<<disp.size()<<" "<<type2str(disp.type())<<std::endl;
 
     /** Convert disp to 32 bits **/
     cv::Mat disp_32F;
-    disp.convertTo(disp_32F, CV_32F, 1./16.0);
+    disp.convertTo(disp_32F, CV_32F);
     std::cout<<"DISP_32F "<<disp_32F.size()<<" "<<type2str(disp_32F.type())<<std::endl;
+    double min_disp, max_disp; cv::minMaxLoc(disp_32F, &min_disp, &max_disp);
+    std::cout<<"MIN DISP: "<<min_disp/256.0<<" MAX DISP: "<<max_disp/256.0<<std::endl;
 
     /** Disp to depth **/
     // See here https://stackoverflow.com/questions/22418846/reprojectimageto3d-in-opencv
-    //cv::Mat_<float> vec_tmp(4,1);
-    //for(int y=0; y<disp_32F.rows; ++y)
-    //{
-    //    for(int x=0; x<disp_32F.cols; ++x)
-    //    {
-    //        vec_tmp(0)=x; vec_tmp(1)=y; vec_tmp(2)=disp_32F.at<float>(y,x); vec_tmp(3)=1;
-    //        vec_tmp = this->event_cam_calib.Q*vec_tmp;
-    //        vec_tmp /= vec_tmp(3);
-    //        if (vec_tmp(2) == base::infinity<float>())
-    //            depthmap.data.push_back(base::NaN<float>());
-    //        else
-    //            depthmap.data.push_back(vec_tmp(2));
-    //    }
-    //}
-
-    /** Using OpenCV function **/
-    cv::Mat depth_img;
+    cv::Mat_<float> vec_tmp(4,1);
     float max, min; max=0.0; min=base::infinity<float>();
-    cv::reprojectImageTo3D(disp_32F, depth_img, this->event_cam_calib.Q);
-    for (int y=0; y<depth_img.rows; ++y)
+    for(int y=0; y<disp_32F.rows; ++y)
     {
-        for (int x=0; x<depth_img.cols; ++x)
+        for(int x=0; x<disp_32F.cols; ++x)
         {
-            cv::Vec3f &point = depth_img.at<cv::Vec3f>(y,x);
-            if (point[2] == base::infinity<float>())
+            /** Divide by 256.0 according to https://github.com/uzh-rpg/DSEC
+             * this only works is you read the image in cv::IMREAD_ANYDEPTH **/
+            vec_tmp(0)=x; vec_tmp(1)=y; vec_tmp(2)=disp_32F.at<float>(y,x)/256.0; vec_tmp(3)=1;
+            vec_tmp = this->event_cam_calib.Q*vec_tmp;
+            vec_tmp /= vec_tmp(3);
+            if (vec_tmp(2) == base::infinity<float>())
                 depthmap.data.push_back(base::NaN<float>());
             else
             {
-                depthmap.data.push_back(point[2]);
-                max = (point[2] > max)? point[2] : max;
-                min = (point[2] < min)? point[2] : min;
+                depthmap.data.push_back(vec_tmp(2));
+                max = (vec_tmp(2) > max)? vec_tmp(2) : max;
+                min = (vec_tmp(2) < min)? vec_tmp(2) : min;
             }
         }
     }
+
+    /** Using OpenCV function **/
+    //cv::Mat depth_img;
+    /** Divide by 256.0 according to https://github.com/uzh-rpg/DSEC
+     * this only works is you read the image in cv::IMREAD_ANYDEPTH **/
+   //disp_32F /=256.0;
+   //float max, min; max=0.0; min=base::infinity<float>();
+   //cv::reprojectImageTo3D(disp_32F, depth_img, this->event_cam_calib.Q);
+   //for (int y=0; y<depth_img.rows; ++y)
+   //{
+   //    for (int x=0; x<depth_img.cols; ++x)
+   //    {
+   //        cv::Vec3f &point = depth_img.at<cv::Vec3f>(y,x);
+   //        if (point[2] == base::infinity<float>())
+   //            depthmap.data.push_back(base::NaN<float>());
+   //        else
+   //        {
+   //            depthmap.data.push_back(point[2]);
+   //            max = (point[2] > max)? point[2] : max;
+   //            min = (point[2] < min)? point[2] : min;
+   //        }
+   //    }
+   //}
 
     std::cout<<"max depth: "<<max<<" min depth: "<<min<<std::endl;
     return depthmap;
