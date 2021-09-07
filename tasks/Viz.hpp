@@ -26,7 +26,7 @@ namespace dsec2pocolog{
      */
     class Viz : public VizBase
     {
-	friend class VizBase;
+    friend class VizBase;
     protected:
 
         /* Config values **/
@@ -35,7 +35,10 @@ namespace dsec2pocolog{
         /** Calibration Files **/
         CameraCalib event_cam_calib;
 
-        /** variables **/
+        /** Buffer of events **/
+        std::vector<::base::samples::Event> events;
+
+        /** Image variables **/
         cv::Mat frame;
 
         /** Input ports **/
@@ -43,8 +46,10 @@ namespace dsec2pocolog{
 
         /** Output ports **/
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> img_msg;
- 
-        cv::Mat createFrame (cv::Mat &frame, std::vector<cv::Point2f> &coord, std::vector<uint8_t> &p);
+
+        cv::Mat createFrame(cv::Mat &frame, std::vector<cv::Point2f> &coord, std::vector<uint8_t> &p);
+
+        cv::Mat createFrame(cv::Mat &img_frame, cv::Mat &event_frame);
 
     public:
         /** TaskContext constructor for Viz
