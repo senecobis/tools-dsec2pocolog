@@ -1,5 +1,5 @@
 require 'orocos'
-require 'vizkit'
+#require 'vizkit'
 include Orocos
 
 ENV['PKG_CONFIG_PATH'] = "#{File.expand_path("..", File.dirname(__FILE__))}/build:#{ENV['PKG_CONFIG_PATH']}"
@@ -14,7 +14,7 @@ Orocos::Process.run 'dsec2pocolog::Task' => 'dsec' do
 
     # Get the task
     dsec = Orocos.name_service.get 'dsec'
-    Orocos.conf.apply(dsec, ['thun_01_a_left'], :override => true)
+    Orocos.conf.apply(dsec, ['TartanEvent'], :override => true)
 
 
     # Configure
@@ -23,5 +23,6 @@ Orocos::Process.run 'dsec2pocolog::Task' => 'dsec' do
     # Start
     dsec.start
 
-    Vizkit.exec
+    # No visualization
+    #Vizkit.exec
 end
